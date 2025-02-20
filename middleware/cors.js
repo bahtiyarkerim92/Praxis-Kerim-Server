@@ -5,6 +5,7 @@ module.exports = () => (req, res, next) => {
     return next();
   }
   const corsWhitelist = [
+    "https://telemedker.com",
     "http://localhost:3000",
     process.env.FRONTEND_DOMAIN,
     "http://localhost:8888/",

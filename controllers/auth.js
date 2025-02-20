@@ -8,6 +8,7 @@ const {
   setAuthCookies,
   clearAuthCookies,
 } = require("../services/cookie/cookieService");
+
 authController.post("/register", async (req, res) => {
   const locale = req.headers["accept-language"] || "en";
   console.log(locale);
