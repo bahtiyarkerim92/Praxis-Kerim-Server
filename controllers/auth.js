@@ -28,8 +28,22 @@ authController.post("/register", async (req, res) => {
       ipCountry,
     } = req.body;
 
+    // Validate country code
+    if (!country) {
+      return res.status(400).json({
+        message: "Validation error",
+        errors: ["Country code is required"],
+      });
+    }
+
     // Hash the password
     const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Create a mapping of country codes to names
+    const countryNames = {
+      BG: "Bulgaria",
+      // Add more country mappings as needed
+    };
 
     // Create new user with mapped data structure
     const user = new User({
@@ -43,7 +57,7 @@ authController.post("/register", async (req, res) => {
         city,
         country: {
           code: country,
-          name: country === "BG" ? "Bulgaria" : "Unknown", // You might want to have a proper country mapping
+          name: countryNames[country] || "Unknown",
         },
       },
       email,

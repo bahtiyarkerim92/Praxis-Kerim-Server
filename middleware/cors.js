@@ -5,8 +5,7 @@ module.exports = () => (req, res, next) => {
     return next();
   }
   const corsWhitelist = [
-    "http://localhost:3001",
-    "https://pickup2.netlify.app",
+    "http://localhost:3000",
     process.env.FRONTEND_DOMAIN,
     "http://localhost:8888/",
   ];
