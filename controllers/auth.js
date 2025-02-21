@@ -8,90 +8,91 @@ const {
   setAuthCookies,
   clearAuthCookies,
 } = require("../services/cookie/cookieService");
+const {
+  validateRegisterRequest,
+  handleValidation,
+} = require("../validations/registerValidation");
 
-authController.post("/register", async (req, res) => {
-  const locale = req.headers["accept-language"] || "en";
-  console.log(locale);
-  try {
-    const {
-      firstName,
-      lastName,
-      birthDate,
-      address,
-      addressNumber,
-      postCode,
-      city,
-      country,
-      email,
-      password,
-      insuranceType,
-      nationalIdNumber,
-      ipCountry,
-    } = req.body;
-
-    // Validate country code
-    if (!country) {
-      return res.status(400).json({
-        message: "Validation error",
-        errors: ["Country code is required"],
-      });
-    }
-
-    // Hash the password
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    // Create a mapping of country codes to names
-    const countryNames = {
-      BG: "Bulgaria",
-      // Add more country mappings as needed
-    };
-
-    // Create new user with mapped data structure
-    const user = new User({
-      firstName,
-      lastName,
-      birthday: new Date(birthDate),
-      address: {
-        street: address,
-        number: addressNumber,
+authController.post(
+  "/register",
+  validateRegisterRequest,
+  handleValidation,
+  async (req, res) => {
+    const locale = req.headers["accept-language"] || "en";
+    console.log("Registration request:", { locale, body: req.body });
+    try {
+      const {
+        firstName,
+        lastName,
+        gender,
+        birthDate,
+        address,
+        addressNumber,
         postCode,
         city,
-        country: {
-          code: country,
-          name: countryNames[country] || "Unknown",
-        },
-      },
-      email,
-      password: hashedPassword,
-      nationalIdNumber,
-      insurance: {
-        type: insuranceType,
-      },
-      termsAccepted: true, // You might want to add this to your frontend form
-      ipCountry,
-    });
+        country,
+        countryName,
+        email,
+        password,
+        insurance,
+        nationalIdNumber,
+        isExistingPatient,
+        ipCountry,
+        termsAccepted,
+      } = req.body;
 
-    await user.save();
-    const validationToken = generateValidationToken(user);
-    await sendValidationEmail(user.email, validationToken, locale);
-    res.status(201).json({
-      message: "User registered successfully",
-      userId: user._id,
-    });
-  } catch (error) {
-    console.error("Registration error:", error);
-    if (error.code === 11000) {
-      return res.status(400).json({ message: "Email already exists" });
-    }
-    if (error.name === "ValidationError") {
-      return res.status(400).json({
-        message: "Validation error",
-        errors: Object.values(error.errors).map((err) => err.message),
+      // Check for existing user
+      const existingUser = await User.findOne({ email: email.toLowerCase() });
+      if (existingUser) {
+        return res.status(400).json({ message: "Email already exists" });
+      }
+
+      // Hash the password
+      const hashedPassword = await bcrypt.hash(password, 10);
+
+      // Create new user
+      const user = new User({
+        firstName,
+        lastName,
+        gender,
+        birthday: new Date(birthDate),
+        address: {
+          street: address,
+          number: addressNumber,
+          postCode,
+          city,
+          country: {
+            code: country,
+            name: countryName,
+          },
+        },
+        email: email.toLowerCase(),
+        password: hashedPassword,
+        nationalIdNumber: country === "BG" ? nationalIdNumber : undefined,
+        isExistingPatient: country === "BG" ? isExistingPatient : undefined,
+        insurance: country === "DE" ? insurance : undefined,
+        termsAccepted,
+        ipCountry,
       });
+
+      console.log("Creating user with data:", user);
+
+      await user.save();
+      const validationToken = generateValidationToken(user);
+      await sendValidationEmail(user.email, validationToken, locale);
+      res.status(201).json({
+        message: "User registered successfully",
+        userId: user._id,
+      });
+    } catch (error) {
+      console.error("Registration error:", error);
+      if (error.code === 11000) {
+        return res.status(400).json({ message: "Email already exists" });
+      }
+      res.status(500).json({ message: "Error during registration" });
     }
-    res.status(500).json({ message: "Error during registration" });
   }
-});
+);
 
 authController.post("/validate-email", async (req, res) => {
   console.log("req");
