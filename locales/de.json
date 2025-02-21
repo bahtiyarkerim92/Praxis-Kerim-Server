@@ -16,5 +16,23 @@
         "termsOfService": "Nutzungsbedingungen",
         "visitUs": "Besuchen Sie uns"
       }
+  },
+  "login": {
+    "emailValidation": {
+      "validation": {
+        "token": {
+          "missing": "Token ist erforderlich",
+          "invalid": "Ungültiges Token-Format",
+          "expired": "Token ist abgelaufen"
+        },
+        "email": {
+          "required": "E-Mail ist erforderlich",
+          "invalid": "E-Mail ist ungültig"
+        },
+        "password": {
+          "required": "Passwort ist erforderlich"
+        }
+      }
+    }
   }
 }

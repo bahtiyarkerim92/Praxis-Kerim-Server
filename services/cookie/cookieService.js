@@ -1,30 +1,28 @@
 const isProduction = process.env.NODE_ENV === "production";
-const halfHour = 30 * 60 * 1000; // 30 minutes in milliseconds
 const oneWeek = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
 
 const cookieOptions = {
   production: {
     httpOnly: true,
     secure: true,
-    sameSite: "None",
+    sameSite: "none",
+    // !!!!!!!!!!!!!!!!!!!!! sameSite: "strict", TODO add this for realy production !!!!
+    domain: ".pickup2.com",
+    path: "/",
   },
   development: {
-    httpOnly: false,
-    secure: false,
-    sameSite: "Lax",
+    httpOnly: true,
+    secure: true,
+    sameSite: "lax",
+    path: "/",
   },
 };
 
 const getOptions = () =>
   isProduction ? cookieOptions.production : cookieOptions.development;
 
-function setAuthCookies(res, accessToken, refreshToken) {
+function setRefreshTokenCookie(res, refreshToken) {
   const options = getOptions();
-
-  res.cookie("accessToken", accessToken, {
-    ...options,
-    maxAge: halfHour,
-  });
 
   res.cookie("refreshToken", refreshToken, {
     ...options,
@@ -32,14 +30,12 @@ function setAuthCookies(res, accessToken, refreshToken) {
   });
 }
 
-function clearAuthCookies(res) {
+function clearRefreshTokenCookie(res) {
   const options = getOptions();
-
-  res.clearCookie("accessToken", options);
   res.clearCookie("refreshToken", options);
 }
 
 module.exports = {
-  setAuthCookies,
-  clearAuthCookies,
+  setRefreshTokenCookie,
+  clearRefreshTokenCookie,
 };

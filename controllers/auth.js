@@ -5,13 +5,25 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const { sendValidationEmail } = require("../services/mailer");
 const {
-  setAuthCookies,
-  clearAuthCookies,
+  setRefreshTokenCookie,
+  clearRefreshTokenCookie,
 } = require("../services/cookie/cookieService");
 const {
   validateRegisterRequest,
   handleValidation,
 } = require("../validations/registerValidation");
+
+const {
+  validateEmailValidationRequest,
+  handleEmailValidation,
+} = require("../validation/emailValidation");
+
+const {
+  validateLoginRequest,
+  handleLoginValidation,
+} = require("../validation/loginValidation");
+
+const { authenticateToken } = require("../middleware/auth");
 
 authController.post(
   "/register",
@@ -94,43 +106,108 @@ authController.post(
   }
 );
 
-authController.post("/validate-email", async (req, res) => {
-  console.log("req");
+authController.post(
+  "/login",
+  validateLoginRequest,
+  handleLoginValidation,
+  async (req, res) => {
+    const { email, password, ip } = req.body;
+    console.log(ip);
+    try {
+      const user = await User.findOne({ email: email.toLowerCase() });
 
-  const locale = req.headers["accept-language"] || "en";
-  const token = req.body.token;
-  console.log(token);
-  if (!token) {
-    return res.status(400).send("Token is required");
-  }
-  try {
-    const decoded = jwt.verify(token, process.env.EMAIL_TOKEN_SECRET);
-    const user = await User.findById(decoded.userId);
-    if (!user) {
-      return res.status(400).send("Invalid token");
+      if (!user) {
+        return res.status(400).json({
+          message: "Email or password is incorrect",
+        });
+      }
+      const validPassword = await bcrypt.compare(password, user.password);
+
+      if (!validPassword) {
+        return res.status(400).json({
+          message: "Email or password is incorrect",
+        });
+      }
+
+      if (!user.isEmailValidated) {
+        return res.status(403).json({
+          message: "Please validate your email before logging in",
+          isEmailValidated: false,
+          email: user.email,
+        });
+      }
+      // Invalidate previous refresh token
+      user.refreshToken = null;
+      await user.save({ validateBeforeSave: false });
+
+      const accessToken = generateAccessToken(user);
+      const refreshToken = generateRefreshToken(user);
+
+      user.refreshToken = refreshToken;
+      await user.save({ validateBeforeSave: false });
+
+      // Set refresh token in HTTP-only cookie
+      setRefreshTokenCookie(res, refreshToken);
+
+      // Send access token in response body
+      res.status(200).json({
+        message: "Login successful",
+        userId: user._id,
+        userType: user.userType,
+
+        accessToken,
+      });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: "Internal server error" });
     }
-
-    // Check if email is already validated
-    if (user.isEmailValidated) {
-      return res.status(400).json({ message: "Email is already validated" });
-    }
-
-    user.isEmailValidated = true;
-    console.log(user);
-    await user.save();
-
-    const accessToken = generateAccessToken(user);
-    const refreshToken = generateRefreshToken(user);
-
-    user.refreshToken = refreshToken;
-    await user.save();
-    console.log(user);
-    setAuthCookies(res, accessToken, refreshToken);
-    res.status(200).json({ message: "Email validated successfully." });
-  } catch (error) {
-    res.status(400).send("Invalid or expired token.");
   }
-});
+);
+
+authController.post(
+  "/validate-email",
+  validateEmailValidationRequest,
+  handleEmailValidation,
+  async (req, res) => {
+    const locale = req.headers["accept-language"] || "en";
+    const token = req.body.token;
+    if (!token) {
+      return res.status(400).send("Token is required");
+    }
+    try {
+      const decoded = jwt.verify(token, process.env.EMAIL_TOKEN_SECRET);
+      const user = await User.findById(decoded.userId);
+      if (!user) {
+        return res.status(400).send("Invalid token");
+      }
+
+      // Check if email is already validated
+      if (user.isEmailValidated) {
+        return res.status(400).json({
+          message: "Email is already validated.",
+          isEmailValidated: true,
+        });
+      }
+
+      user.isEmailValidated = true;
+      await user.save();
+
+      const refreshToken = generateRefreshToken(user);
+
+      user.refreshToken = refreshToken;
+      await user.save();
+      setRefreshTokenCookie(res, refreshToken);
+      await sendRegistrationCompletedEmail(
+        user.email,
+        locale,
+        user.companyName
+      );
+      res.status(200).json({ message: "Email validated successfully." });
+    } catch (error) {
+      res.status(400).send("Invalid or expired token.");
+    }
+  }
+);
 
 authController.post("/resend-validation-email", async (req, res) => {
   const locale = req.headers["accept-language"] || "en";
@@ -175,6 +252,158 @@ authController.post("/resend-validation-email", async (req, res) => {
     res
       .status(500)
       .json({ message: "An error occurred while resending the email" });
+  }
+});
+
+authController.get("/status", async (req, res) => {
+  try {
+    const refreshToken = req.cookies.refreshToken;
+
+    if (!refreshToken) {
+      return res.status(401).json({
+        isAuthenticated: false,
+        message: "No refresh token provided",
+      });
+    }
+
+    try {
+      const decoded = jwt.verify(
+        refreshToken,
+        process.env.REFRESH_TOKEN_SECRET
+      );
+      const user = await User.findOne({
+        _id: decoded.userId,
+        refreshToken: refreshToken,
+      });
+
+      if (!user) {
+        return res.status(403).json({
+          isAuthenticated: false,
+          message: "Invalid refresh token",
+        });
+      }
+
+      const accessToken = generateAccessToken(user);
+      const newRefreshToken = generateRefreshToken(user);
+
+      // Update refresh token in database
+      user.refreshToken = newRefreshToken;
+      await user.save();
+
+      // Set new refresh token in cookie
+      setRefreshTokenCookie(res, newRefreshToken);
+
+      return res.status(200).json({
+        isAuthenticated: true,
+        accessToken,
+        userId: user._id,
+      });
+    } catch (err) {
+      return res.status(403).json({
+        isAuthenticated: false,
+        message: "Invalid refresh token",
+      });
+    }
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      isAuthenticated: false,
+      message: "Internal server error",
+    });
+  }
+});
+
+authController.post("/refresh", async (req, res) => {
+  const refreshToken = req.cookies.refreshToken;
+
+  if (!refreshToken) {
+    return res.status(401).json({ message: "No refresh token provided" });
+  }
+
+  try {
+    const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
+    const user = await User.findOne({
+      _id: decoded.userId,
+      refreshToken: refreshToken,
+    });
+
+    if (!user) {
+      return res.status(403).json({ message: "Invalid refresh token" });
+    }
+
+    const accessToken = generateAccessToken(user);
+    const newRefreshToken = generateRefreshToken(user);
+
+    // Update refresh token in database
+    user.refreshToken = newRefreshToken;
+    await user.save();
+
+    // Set new refresh token in cookie
+    setRefreshTokenCookie(res, newRefreshToken);
+
+    res.json({
+      accessToken,
+      userId: user._id,
+    });
+  } catch (error) {
+    return res.status(403).json({ message: "Invalid refresh token" });
+  }
+});
+
+authController.post("/logout", async (req, res) => {
+  try {
+    const refreshToken = req.cookies.refreshToken;
+
+    // Invalidate the refresh token in the database
+    if (refreshToken) {
+      const user = await User.findOne({ refreshToken });
+      if (user) {
+        user.refreshToken = null;
+        await user.save();
+      }
+    }
+
+    // Clear refresh token cookie
+    clearRefreshTokenCookie(res);
+
+    res.status(200).json({ message: "Logged out successfully" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+authController.get("/profile", authenticateToken, async (req, res) => {
+  try {
+    const user = req.user;
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Create response object based on user's country
+    const profileData = {
+      fullName: `${user.firstName} ${user.lastName}`,
+      email: user.email,
+      gender: user.gender,
+      birthday: user.birthday,
+      address: `${user.address.street} ${user.address.number}, ${user.address.postCode} ${user.address.city}, ${user.address.country.name}`,
+    };
+
+    // Add country-specific data
+    if (user.address.country.code === "BG") {
+      profileData.nationalIdNumber = user.nationalIdNumber;
+    } else if (user.address.country.code === "DE") {
+      profileData.insurance = {
+        type: user.insurance.type,
+        company: user.insurance.company,
+        number: user.insurance.number,
+      };
+    }
+
+    res.status(200).json(profileData);
+  } catch (error) {
+    console.error("Profile fetch error:", error);
+    res.status(500).json({ message: "Error fetching profile data" });
   }
 });
 
