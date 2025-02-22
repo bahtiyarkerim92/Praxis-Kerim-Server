@@ -20,7 +20,7 @@ function getEmailHeader() {
                                                             style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-collapse:collapse;border-spacing:0px">
                                                             <tr>
                                                                 <td align="left" style="padding:0;Margin:0;font-size:0">
-                                                                    <img src="https://images-pickup2.s3.eu-north-1.amazonaws.com/logo+outline.png"
+                                                                    <img src="https://firebasestorage.googleapis.com/v0/b/space4time-2e4fa.firebasestorage.app/o/images%2Flogo_telemediker.png?alt=media&token=58fa76fe-5381-440e-befa-9b3c7bb3902e"
                                                                         alt="" width="150" class="img-6461" height="60"
                                                                         style="display:block;font-size:14px;border:0;outline:none;text-decoration:none">
                                                                 </td>
