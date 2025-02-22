@@ -99,6 +99,7 @@ authController.post(
         insurance: country === "DE" ? insurance : undefined,
         termsAccepted,
         ipCountry,
+        emailTokenIssuedAt: new Date(),
       });
 
       console.log("Creating user with data:", user);
@@ -306,6 +307,7 @@ authController.post(
   validateResendValidationEmailRequest,
   handleResendValidationEmail,
   async (req, res) => {
+    console.log("req incomming");
     const { email, locale } = req.body;
     try {
       const user = await User.findOne({ email: email.toLowerCase() });
@@ -349,10 +351,15 @@ authController.post(
       user.resetPasswordToken = resetToken;
       user.resetPasswordExpires = resetTokenExpires;
       await user.save();
+      console.log("resetToken", resetToken);
+
+      console.log("user", user);
 
       const resetUrl = `${process.env.FRONTEND_DOMAIN}${
         locale === "en" ? "" : `${locale}/`
       }reset-password?token=${resetToken}`;
+
+      console.log("sending email");
       await sendForgotPassword(email, resetUrl, locale, user.companyName);
 
       res.status(200).json({

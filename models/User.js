@@ -3,28 +3,20 @@ const mongoose = require("mongoose");
 const userSchema = new mongoose.Schema({
   firstName: {
     type: String,
-    required: true,
-    trim: true,
   },
   lastName: {
     type: String,
-    required: true,
-    trim: true,
   },
   gender: {
     type: String,
-    required: true,
     enum: ["male", "female", "other"],
   },
   birthday: {
     type: Date,
-    required: true,
   },
   address: {
     street: {
       type: String,
-      required: true,
-      trim: true,
     },
     number: {
       type: String,
@@ -100,6 +92,10 @@ const userSchema = new mongoose.Schema({
     default: false,
   },
   refreshToken: String,
+
+  emailTokenIssuedAt: Date,
+  resetPasswordToken: String,
+  resetPasswordExpires: { type: Date },
 });
 
 const User = mongoose.model("User", userSchema);
