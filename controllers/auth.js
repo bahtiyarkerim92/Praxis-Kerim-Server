@@ -183,8 +183,7 @@ authController.post(
   validateEmailValidationRequest,
   handleEmailValidation,
   async (req, res) => {
-    const locale = req.headers["accept-language"] || "en";
-    const token = req.body.token;
+    const { token, locale } = req.query;
     if (!token) {
       return res.status(400).send("Token is required");
     }
@@ -197,7 +196,7 @@ authController.post(
 
       // Check if email is already validated
       if (user.isEmailValidated) {
-        return res.status(400).json({
+        return res.status(200).json({
           message: "Email is already validated.",
           isEmailValidated: true,
         });
@@ -211,63 +210,96 @@ authController.post(
       user.refreshToken = refreshToken;
       await user.save();
       setRefreshTokenCookie(res, refreshToken);
-      await sendRegistrationCompletedEmail(
-        user.email,
-        locale,
-        user.companyName
-      );
+      await sendRegistrationCompletedEmail(user.email, locale);
       res.status(200).json({ message: "Email validated successfully." });
     } catch (error) {
+      // Check if the error is a JWT verification error
+      if (
+        error.name === "JsonWebTokenError" ||
+        error.name === "TokenExpiredError"
+      ) {
+        // Try to find user with validated email
+        try {
+          const decoded = jwt.decode(token);
+          if (decoded && decoded.userId) {
+            const user = await User.findById(decoded.userId);
+            if (user && user.isEmailValidated) {
+              return res.status(200).json({
+                message: "Email is already validated.",
+                isEmailValidated: true,
+              });
+            }
+          }
+        } catch (innerError) {
+          console.error("Error checking user validation status:", innerError);
+        }
+      }
       res.status(400).send("Invalid or expired token.");
     }
   }
 );
 
-authController.post("/resend-validation-email", async (req, res) => {
-  const locale = req.headers["accept-language"] || "en";
-  const { email } = req.body;
+authController.post(
+  "/resend-validation-email",
 
-  if (!email) {
-    return res.status(400).json({ message: "Email is required" });
-  }
+  validateResendValidationEmailRequest,
+  handleResendValidationEmail,
+  async (req, res) => {
+    const { email, locale } = req.body;
 
-  try {
-    const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
+    if (!email) {
+      return res.status(400).json({ message: "Email is required" });
     }
-    if (user.isEmailValidated) {
-      return res.status(400).json({ message: "Email is already validated." });
-    }
-    // Check if there is a recent token that is still valid
-    const tokenExpiryTime = 3600;
-    const currentTime = Math.floor(Date.now() / 1000);
 
-    // Only check token expiry if emailTokenIssuedAt exists
-    if (user.emailTokenIssuedAt) {
-      const issuedTime = Math.floor(user.emailTokenIssuedAt.getTime() / 1000);
-      if (issuedTime + tokenExpiryTime > currentTime) {
-        return res.status(200).json({
-          message: "You need to validate your email. Please check your email.",
+    try {
+      const user = await User.findOne({ email });
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      if (user.isEmailValidated) {
+        return res.status(400).json({ message: "Email is already validated." });
+      }
+
+      // Check if there is a recent token that is still valid
+      const tokenExpiryTime = 3600; // 1 hour in seconds
+      const currentTime = Math.floor(Date.now() / 1000);
+      const lastEmailSentTime = Math.floor(
+        user.emailTokenIssuedAt.getTime() / 1000
+      );
+      const timeElapsed = currentTime - lastEmailSentTime;
+
+      // If less than 1 minute has passed since last email
+      if (timeElapsed < 60) {
+        return res.status(400).json({
+          message: "Please wait before requesting another email",
+          retryAfter: 60 - timeElapsed,
         });
       }
+
+      // If the current token is still valid (less than 1 hour old)
+      if (timeElapsed < tokenExpiryTime) {
+        return res.status(400).json({
+          message: "A valid verification email was already sent.",
+          retryAfter: tokenExpiryTime - timeElapsed,
+        });
+      }
+
+      // Generate a new validation token and update issued time
+      const validationToken = generateValidationToken(user);
+      user.emailTokenIssuedAt = new Date();
+      await user.save();
+
+      await sendValidationEmail(user.email, validationToken, locale);
+
+      res.status(200).json({ message: "Validation email resent successfully" });
+    } catch (error) {
+      console.error(error);
+      res
+        .status(500)
+        .json({ message: "An error occurred while resending the email" });
     }
-
-    // Generate a new validation token and update issued time
-    const validationToken = generateValidationToken(user);
-    user.emailTokenIssuedAt = new Date();
-    await user.save();
-
-    await sendValidationEmail(user.email, validationToken, locale);
-
-    res.status(200).json({ message: "Validation email resent successfully" });
-  } catch (error) {
-    console.error(error);
-    res
-      .status(500)
-      .json({ message: "An error occurred while resending the email" });
   }
-});
+);
 
 authController.post(
   "/forgot-password",
