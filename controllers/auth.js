@@ -1,9 +1,13 @@
 require("dotenv").config();
 const authController = require("express").Router();
 const User = require("../models/User");
+const crypto = require("crypto");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const { sendValidationEmail } = require("../services/mailer");
+const {
+  sendValidationEmail,
+  sendForgotPassword,
+} = require("../services/mailer");
 const {
   setRefreshTokenCookie,
   clearRefreshTokenCookie,
@@ -22,6 +26,16 @@ const {
   validateLoginRequest,
   handleLoginValidation,
 } = require("../validation/loginValidation");
+
+const {
+  validateResendValidationEmailRequest,
+  handleResendValidationEmail,
+} = require("../validation/resentValidation");
+
+const {
+  validateResetPasswordRequest,
+  handleResetPasswordRequest,
+} = require("../validation/resetPasswordValidation");
 
 const { authenticateToken } = require("../middleware/auth");
 
@@ -254,6 +268,117 @@ authController.post("/resend-validation-email", async (req, res) => {
       .json({ message: "An error occurred while resending the email" });
   }
 });
+
+authController.post(
+  "/forgot-password",
+  validateResendValidationEmailRequest,
+  handleResendValidationEmail,
+  async (req, res) => {
+    const { email, locale } = req.body;
+    try {
+      const user = await User.findOne({ email: email.toLowerCase() });
+      if (!user) {
+        return res.status(404).json({
+          message: "User with this email does not exist",
+        });
+      }
+
+      // Check if there is a recent token that is still valid
+      const tokenExpiryTime = 3600; // 1 hour in seconds
+      const currentTime = Date.now();
+      const lastEmailSentTime = user.resetPasswordExpires
+        ? user.resetPasswordExpires.getTime()
+        : 0;
+      const timeElapsed = Math.floor((currentTime - lastEmailSentTime) / 1000); // Convert to seconds
+
+      // If less than 1 minute has passed since last email
+      if (timeElapsed < 60) {
+        return res.status(400).json({
+          message: "Please wait before requesting another reset email",
+          retryAfter: 60 - timeElapsed,
+        });
+      }
+
+      // If the current token is still valid (less than 1 hour old)
+      if (
+        timeElapsed < tokenExpiryTime &&
+        lastEmailSentTime > currentTime - tokenExpiryTime * 1000
+      ) {
+        return res.status(400).json({
+          message:
+            "A valid reset email was already sent. Please check your inbox or spam folder.",
+          retryAfter: tokenExpiryTime - timeElapsed,
+        });
+      }
+
+      const resetToken = crypto.randomBytes(32).toString("hex");
+      const resetTokenExpires = new Date(Date.now() + 3600000); // 1 hour from now
+
+      user.resetPasswordToken = resetToken;
+      user.resetPasswordExpires = resetTokenExpires;
+      await user.save();
+
+      const resetUrl = `${process.env.FRONTEND_DOMAIN}${
+        locale === "en" ? "" : `${locale}/`
+      }reset-password?token=${resetToken}`;
+      await sendForgotPassword(email, resetUrl, locale, user.companyName);
+
+      res.status(200).json({
+        message: "Password reset email sent successfully",
+      });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  }
+);
+
+authController.post(
+  "/reset-password",
+  validateResetPasswordRequest,
+  handleResetPasswordRequest,
+  async (req, res) => {
+    const { token, newPassword } = req.body;
+    try {
+      const user = await User.findOne({
+        resetPasswordToken: token,
+      });
+
+      if (!user) {
+        return res.status(400).json({
+          message: "Invalid token.",
+        });
+      }
+
+      // Check if token is expired
+      if (
+        !user.resetPasswordExpires ||
+        user.resetPasswordExpires < Date.now()
+      ) {
+        return res.status(401).json({
+          message: "Token has expired.",
+        });
+      }
+
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+      // Update user's password and clear ALL reset-related fields
+      user.password = hashedPassword;
+      user.resetPasswordToken = undefined;
+      user.resetPasswordExpires = undefined;
+      await user.save();
+
+      res.status(200).json({
+        message: "Password has been reset successfully.",
+      });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({
+        message: "Internal server error.",
+      });
+    }
+  }
+);
 
 authController.get("/status", async (req, res) => {
   try {

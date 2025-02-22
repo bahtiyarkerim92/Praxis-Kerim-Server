@@ -9,6 +9,17 @@
         "buttonText": "Confirm"
       },
 
+      "passwordReset": {
+      "title": "Password reset",
+      "greeting": "Hello,{{companyName}}",
+      "message": "We received a request to reset your PickUp2 account password. If you initiated this request, please click the link below to reset your password:",
+      "buttonText": "RESET YOUR PASSWORD",
+      "expiryMessage": "For security reasons, the link will expire in <strong>1 hour</strong>. If you didn't request a password reset, please ignore this email—your account remains safe and no changes have been made.",
+      "supportMessage": "If you need further assistance, feel free to reach out to our support team.",
+      "regards": "Best regards,",
+      "team": "The PickUp2 Team"
+    },
+
       "emailFooter": {
         "regards": "Best regards,",
         "team": "The <strong>Telemediker</strong> Team",

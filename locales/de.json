@@ -8,6 +8,17 @@
         "closing": "Willkommen in der Zukunft der Logistik mit <strong>Telemediker</strong>!<br />",
         "buttonText": "Bestätigen"
       },
+
+      "passwordReset": {
+        "title": "Passwort zurücksetzen",
+        "greeting": "Hallo {{companyName}}",
+        "message": "Wir haben eine Anfrage erhalten, Ihr PickUp2-Passwort zurückzusetzen. Wenn Sie diese Anfrage gestellt haben, klicken Sie bitte auf den untenstehenden Link, um Ihr Passwort zurückzusetzen:",
+        "buttonText": "PASSWORT ZURÜCKSETZEN",
+        "expiryMessage": "Aus Sicherheitsgründen läuft der Link in <strong>1 Stunde</strong> ab. Wenn Sie kein Passwort-Reset angefordert haben, ignorieren Sie bitte diese E-Mail—Ihr Konto ist sicher und es wurden keine Änderungen vorgenommen.",
+        "supportMessage": "Wenn Sie weitere Hilfe benötigen, wenden Sie sich gern an unser Support-Team.",
+        "regards": "Mit freundlichen Grüßen,",
+        "team": "Das PickUp2-Team"
+      },
       "emailFooter": {
         "regards": "Mit freundlichen Grüßen,",
         "team": "Das <strong>Telemediker</strong>-Team",
