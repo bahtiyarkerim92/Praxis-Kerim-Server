@@ -8,15 +8,15 @@ module.exports = () => (req, res, next) => {
   const corsWhitelist = [
     "https://telemedker.com",
     "http://localhost:3000",
-    "http://localhost:3030", // ✅ Make sure this is included
+    "http://localhost:3030",
     process.env.FRONTEND_DOMAIN,
     "http://localhost:8888/",
   ];
 
   const origin = req.headers.origin;
 
-  // ✅ Allow requests from the same server (no CORS required)
-  if (!origin || origin === "http://localhost:3030") {
+  // Allow requests from the same server (no CORS required)
+  if (!origin) {
     return next();
   }
 
@@ -29,7 +29,7 @@ module.exports = () => (req, res, next) => {
     );
     res.setHeader(
       "Access-Control-Allow-Headers",
-      "Origin, X-Requested-With, Content-Type, Accept, Authorization"
+      "Origin, X-Requested-With, Content-Type, Accept, Authorization, Cookie"
     );
     res.setHeader("Access-Control-Expose-Headers", "Set-Cookie");
 
@@ -38,6 +38,7 @@ module.exports = () => (req, res, next) => {
       return res.status(204).end();
     }
   } else {
+    console.log(`CORS blocked request from origin: ${origin}`);
     res.status(403).json({ message: "CORS policy does not allow this origin" });
     return;
   }

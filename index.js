@@ -13,7 +13,6 @@ async function start() {
   setupLocale(app);
   await databaseConfig(app);
   routerConfig(app);
-  console.log("");
   app.listen(process.env.PORT, () =>
     console.log("REST Service started!", process.env.PORT)
   );
