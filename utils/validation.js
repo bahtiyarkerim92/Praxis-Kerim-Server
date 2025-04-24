@@ -12,7 +12,7 @@ const handleValidation = (req, res, next) => {
         i18n.t(`registrationValidation.${error.msg}`, { lng: locale }) ||
         error.msg;
     });
-
+    console.log("translatedErrors", translatedErrors);
     return res.status(400).json({
       error: {
         message: "Validation failed",

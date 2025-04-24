@@ -8,10 +8,7 @@ const {
   sendValidationEmail,
   sendForgotPassword,
 } = require("../services/mailer");
-const {
-  setRefreshTokenCookie,
-  clearRefreshTokenCookie,
-} = require("../services/cookie/cookieService");
+
 const {
   validateRegisterRequest,
   handleValidation,
@@ -38,6 +35,19 @@ const {
 } = require("../validation/resetPasswordValidation");
 
 const { authenticateToken } = require("../middleware/auth");
+
+const {
+  setRefreshTokenCookie,
+  clearRefreshTokenCookie,
+} = require("../services/cookie/cookieService");
+const {
+  generateAccessToken,
+  generateRefreshToken,
+  generateValidationToken,
+  verifyToken,
+  storeRefreshToken,
+  invalidateRefreshToken,
+} = require("../services/token/tokenService");
 
 authController.post(
   "/register",
@@ -123,11 +133,11 @@ authController.post(
 
 authController.post(
   "/login",
-  validateLoginRequest,
-  handleLoginValidation,
+
   async (req, res) => {
+    console.log("🔴 [Auth Login] Request:", req.body);
     const { email, password, ip } = req.body;
-    console.log(ip);
+
     try {
       const user = await User.findOne({ email: email.toLowerCase() });
 
@@ -156,13 +166,13 @@ authController.post(
       await user.save({ validateBeforeSave: false });
 
       const accessToken = generateAccessToken(user);
-      const refreshToken = generateRefreshToken(user);
+      const { token: refreshToken, jti } = generateRefreshToken(user);
 
-      user.refreshToken = refreshToken;
-      await user.save({ validateBeforeSave: false });
+      await storeRefreshToken(user, refreshToken, jti);
 
-      // Set refresh token in HTTP-only cookie
-      setRefreshTokenCookie(res, refreshToken);
+      setRefreshTokenCookie(res, refreshToken, req);
+      user.lastLogin = new Date();
+      await user.save();
 
       // Send access token in response body
       res.status(200).json({
@@ -419,120 +429,66 @@ authController.post(
   }
 );
 
-authController.get("/status", async (req, res) => {
-  try {
-    const refreshToken = req.cookies.refreshToken;
+authController.get("/status", authenticateToken, (req, res) => {
+  // Check if the request is authenticated
+  // The middleware now sets req.isAuthenticated explicitly
+  const isAuthenticated = req.isAuthenticated !== false;
 
-    if (!refreshToken) {
-      return res.status(401).json({
-        isAuthenticated: false,
-        message: "No refresh token provided",
-      });
-    }
-
-    try {
-      const decoded = jwt.verify(
-        refreshToken,
-        process.env.REFRESH_TOKEN_SECRET
-      );
-      const user = await User.findOne({
-        _id: decoded.userId,
-        refreshToken: refreshToken,
-      });
-
-      if (!user) {
-        return res.status(403).json({
-          isAuthenticated: false,
-          message: "Invalid refresh token",
-        });
-      }
-
-      const accessToken = generateAccessToken(user);
-      const newRefreshToken = generateRefreshToken(user);
-
-      // Update refresh token in database
-      user.refreshToken = newRefreshToken;
-      await user.save();
-
-      // Set new refresh token in cookie
-      setRefreshTokenCookie(res, newRefreshToken);
-
-      return res.status(200).json({
-        isAuthenticated: true,
-        accessToken,
-        userId: user._id,
-      });
-    } catch (err) {
-      return res.status(403).json({
-        isAuthenticated: false,
-        message: "Invalid refresh token",
-      });
-    }
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({
+  // If not authenticated, return appropriate response
+  if (!isAuthenticated) {
+    return res.status(200).json({
       isAuthenticated: false,
-      message: "Internal server error",
     });
   }
-});
 
-authController.post("/refresh", async (req, res) => {
-  const refreshToken = req.cookies.refreshToken;
-
-  if (!refreshToken) {
-    return res.status(401).json({ message: "No refresh token provided" });
-  }
-
-  try {
-    const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
-    const user = await User.findOne({
-      _id: decoded.userId,
-      refreshToken: refreshToken,
-    });
-
-    if (!user) {
-      return res.status(403).json({ message: "Invalid refresh token" });
-    }
-
-    const accessToken = generateAccessToken(user);
-    const newRefreshToken = generateRefreshToken(user);
-
-    // Update refresh token in database
-    user.refreshToken = newRefreshToken;
-    await user.save();
-
-    // Set new refresh token in cookie
-    setRefreshTokenCookie(res, newRefreshToken);
-
-    res.json({
-      accessToken,
-      userId: user._id,
-    });
-  } catch (error) {
-    return res.status(403).json({ message: "Invalid refresh token" });
-  }
+  // If authenticated, return user data
+  res.status(200).json({
+    isAuthenticated: true,
+    accessToken: req.accessToken, // Use the accessToken set by the middleware
+    userId: req.user._id,
+    isAdmin: req.user.isAdmin,
+    userType: req.user.userType,
+    isPaid:
+      req.user.activeSubscription?.status === "active" ||
+      req.user.activeSubscription?.status === "trial",
+  });
 });
 
 authController.post("/logout", async (req, res) => {
   try {
     const refreshToken = req.cookies.refreshToken;
 
-    // Invalidate the refresh token in the database
     if (refreshToken) {
-      const user = await User.findOne({ refreshToken });
-      if (user) {
-        user.refreshToken = null;
-        await user.save();
+      try {
+        const payload = verifyToken(
+          refreshToken,
+          process.env.REFRESH_TOKEN_SECRET
+        );
+
+        if (payload && payload.jti) {
+          // Find user by token JTI
+          const user = await User.findOne({
+            "refreshTokens.jti": payload.jti,
+          });
+
+          if (user) {
+            await invalidateRefreshToken(user, payload.jti);
+            await user.save();
+          }
+        }
+      } catch (error) {
+        console.error(
+          "🔴 [Auth Logout] Error invalidating refresh token:",
+          error
+        );
+        // Continue with logout even if token invalidation fails
       }
     }
 
-    // Clear refresh token cookie
-    clearRefreshTokenCookie(res);
-
+    clearRefreshTokenCookie(res, req);
     res.status(200).json({ message: "Logged out successfully" });
   } catch (error) {
-    console.error(error);
+    console.error("🔴 [Auth Logout] Error:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 });
@@ -570,23 +526,5 @@ authController.get("/profile", authenticateToken, async (req, res) => {
     res.status(500).json({ message: "Error fetching profile data" });
   }
 });
-
-function generateAccessToken(user) {
-  return jwt.sign({ userId: user._id }, process.env.ACCESS_TOKEN_SECRET, {
-    expiresIn: "30m",
-  });
-}
-
-function generateRefreshToken(user) {
-  return jwt.sign({ userId: user._id }, process.env.REFRESH_TOKEN_SECRET, {
-    expiresIn: "7d",
-  });
-}
-
-function generateValidationToken(user) {
-  return jwt.sign({ userId: user._id }, process.env.EMAIL_TOKEN_SECRET, {
-    expiresIn: "1h",
-  });
-}
 
 module.exports = authController;

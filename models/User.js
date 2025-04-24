@@ -91,11 +91,31 @@ const userSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
-  refreshToken: String,
+  refreshTokens: {
+    type: [
+      {
+        token: { type: String, required: false },
+        jti: { type: String, required: false },
+        createdAt: { type: Date, default: Date.now },
+        invalidated: { type: Boolean, default: false },
+      },
+    ],
+    default: [],
+  },
 
   emailTokenIssuedAt: Date,
   resetPasswordToken: String,
   resetPasswordExpires: { type: Date },
+
+  isAdmin: {
+    type: Boolean,
+    default: false,
+  },
+
+  registrationDate: {
+    type: Date,
+    default: Date.now,
+  },
 });
 
 const User = mongoose.model("User", userSchema);

@@ -1,38 +1,45 @@
+require("dotenv").config();
 const isProduction = process.env.NODE_ENV === "production";
 const oneWeek = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
 
+// Cookie options optimized for cross-domain usage
 const cookieOptions = {
   production: {
     httpOnly: true,
-    secure: true,
+    secure: true, // Must be true for cross-domain and sameSite: none
     sameSite: "none",
-    // !!!!!!!!!!!!!!!!!!!!! sameSite: "strict", TODO add this for realy production !!!!
-    domain: ".pickup2.com",
+    maxAge: oneWeek,
     path: "/",
+    domain: ".telemedker.com", // Root domain to allow sharing between subdomains
   },
   development: {
     httpOnly: true,
-    secure: true,
+    secure: false, // Allow non-secure in development
     sameSite: "lax",
     path: "/",
+    maxAge: oneWeek,
   },
 };
 
-const getOptions = () =>
+// Get the base options based on environment
+const getBaseOptions = () =>
   isProduction ? cookieOptions.production : cookieOptions.development;
 
-function setRefreshTokenCookie(res, refreshToken) {
-  const options = getOptions();
-
-  res.cookie("refreshToken", refreshToken, {
-    ...options,
-    maxAge: oneWeek,
-  });
+function getOptions(req) {
+  const options = { ...getBaseOptions() };
+  return options;
 }
 
-function clearRefreshTokenCookie(res) {
-  const options = getOptions();
-  res.clearCookie("refreshToken", options);
+function setRefreshTokenCookie(res, refreshToken, req) {
+  const options = getOptions(req);
+  res.cookie("refreshToken", refreshToken, options);
+}
+
+function clearRefreshTokenCookie(res, req) {
+  const options = getOptions(req);
+  const { maxAge, ...clearOptions } = options;
+
+  res.clearCookie("refreshToken", clearOptions);
 }
 
 module.exports = {
