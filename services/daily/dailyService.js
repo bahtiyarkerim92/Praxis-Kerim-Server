@@ -34,10 +34,11 @@ class DailyService {
           privacy: "public", // Changed from 'open' to 'public' as per Daily.co API
           properties: {
             // Room will expire 3 hours after appointment time, or 24 hours from now if appointment is in the past
+            // All times calculated in UTC
             exp: Math.floor(
               Math.max(
-                new Date(appointment.date).getTime() + 3 * 60 * 60 * 1000, // 3 hours after appointment
-                Date.now() + 24 * 60 * 60 * 1000 // 24 hours from now
+                new Date(appointment.date).getTime() + 3 * 60 * 60 * 1000, // 3 hours after appointment (UTC)
+                Date.now() + 24 * 60 * 60 * 1000 // 24 hours from now (UTC)
               ) / 1000
             ),
             enable_screenshare: true,

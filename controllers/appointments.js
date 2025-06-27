@@ -32,7 +32,7 @@ const handleValidationErrors = (req, res, next) => {
 };
 
 const requireAdmin = (req, res, next) => {
-  if (!req.user || !req.user.isAdmin) {
+  if (!req.doctor || !req.doctor.isAdmin) {
     return res.status(403).json({
       message: "Admin access required",
     });
@@ -52,11 +52,14 @@ const appointmentValidationRules = [
     .isISO8601()
     .withMessage("Valid date is required")
     .custom((value) => {
-      const date = new Date(value);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      // Parse the incoming date as UTC
+      const appointmentDate = new Date(value + "T00:00:00.000Z");
+      const todayUTC = new Date();
+      // Set to start of day in UTC
+      todayUTC.setUTCHours(0, 0, 0, 0);
 
-      if (date < today) {
+      // Allow appointments from today onwards (inclusive)
+      if (appointmentDate < todayUTC) {
         throw new Error("Date cannot be in the past");
       }
       return true;
@@ -108,20 +111,21 @@ router.get("/doctor", authenticateDoctorToken, async (req, res) => {
       filter.patientId = patientId;
     }
 
-    // Date filters
+    // Date filters - ensure UTC handling
     if (date) {
-      const targetDate = new Date(date);
-      const nextDay = new Date(targetDate);
-      nextDay.setDate(nextDay.getDate() + 1);
+      // Parse date as UTC to avoid timezone shifts
+      const targetDateUTC = new Date(date + "T00:00:00.000Z");
+      const nextDayUTC = new Date(targetDateUTC);
+      nextDayUTC.setUTCDate(nextDayUTC.getUTCDate() + 1);
 
       filter.date = {
-        $gte: targetDate,
-        $lt: nextDay,
+        $gte: targetDateUTC,
+        $lt: nextDayUTC,
       };
     } else if (startDate && endDate) {
       filter.date = {
-        $gte: new Date(startDate),
-        $lte: new Date(endDate),
+        $gte: new Date(startDate + "T00:00:00.000Z"),
+        $lte: new Date(endDate + "T23:59:59.999Z"),
       };
     }
 
@@ -257,20 +261,21 @@ router.get("/", authenticateToken, async (req, res) => {
       console.log("Final filter:", filter);
     }
 
-    // Date filters
+    // Date filters - ensure UTC handling
     if (date) {
-      const targetDate = new Date(date);
-      const nextDay = new Date(targetDate);
-      nextDay.setDate(nextDay.getDate() + 1);
+      // Parse date as UTC to avoid timezone shifts
+      const targetDateUTC = new Date(date + "T00:00:00.000Z");
+      const nextDayUTC = new Date(targetDateUTC);
+      nextDayUTC.setUTCDate(nextDayUTC.getUTCDate() + 1);
 
       filter.date = {
-        $gte: targetDate,
-        $lt: nextDay,
+        $gte: targetDateUTC,
+        $lt: nextDayUTC,
       };
     } else if (startDate && endDate) {
       filter.date = {
-        $gte: new Date(startDate),
-        $lte: new Date(endDate),
+        $gte: new Date(startDate + "T00:00:00.000Z"),
+        $lte: new Date(endDate + "T23:59:59.999Z"),
       };
     }
 
@@ -402,11 +407,13 @@ router.post(
         });
       }
 
+      // Parse appointment date as UTC
+      const appointmentDateUTC = new Date(date + "T00:00:00.000Z");
+
       // Check if slot is available
-      const appointmentDate = new Date(date);
       const availability = await Availability.findOne({
         doctorId: doctorId,
-        date: appointmentDate,
+        date: appointmentDateUTC,
         isActive: true,
       });
 
@@ -420,7 +427,7 @@ router.post(
       // Check if slot is already booked
       const existingAppointment = await Appointment.findOne({
         doctorId,
-        date: appointmentDate,
+        date: appointmentDateUTC,
         slot,
         status: { $in: ["pending", "confirmed"] },
       });
@@ -434,7 +441,7 @@ router.post(
       const appointment = new Appointment({
         patientId: finalPatientId,
         doctorId,
-        date: appointmentDate,
+        date: appointmentDateUTC,
         slot,
         plan,
         reason,
@@ -502,7 +509,7 @@ router.put(
       }
 
       appointment.status = "confirmed";
-      appointment.confirmedAt = Date.now();
+      appointment.confirmedAt = new Date(); // UTC timestamp
       await appointment.save();
 
       await appointment.populate("doctorId", "name email specialties");
@@ -651,7 +658,7 @@ router.put(
       }
 
       appointment.status = "cancelled";
-      appointment.cancelledAt = Date.now();
+      appointment.cancelledAt = new Date(); // UTC timestamp
 
       if (req.body.reason) {
         appointment.notes =
@@ -705,7 +712,7 @@ router.get("/test/timing", async (req, res) => {
           hasPassed: hasAppointmentPassed(appointmentObj),
         },
         debug: {
-          currentTime: new Date().toISOString(),
+          currentTimeUTC: new Date().toISOString(),
           appointmentDateTime: `${appointmentObj.date.toISOString().split("T")[0]} ${appointmentObj.slot}`,
         },
       });
@@ -713,7 +720,7 @@ router.get("/test/timing", async (req, res) => {
       // Just show current time info
       res.json({
         success: true,
-        currentTime: new Date().toISOString(),
+        currentTimeUTC: new Date().toISOString(),
         currentTimeFormatted: new Date().toLocaleString(),
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       });
@@ -767,7 +774,7 @@ router.patch(
         appointment.notes = notes;
       }
 
-      appointment.updatedAt = Date.now();
+      appointment.updatedAt = new Date(); // UTC timestamp
       await appointment.save();
 
       await appointment.populate("doctorId", "name email specialties");

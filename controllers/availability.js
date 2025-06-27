@@ -39,11 +39,13 @@ const availabilityValidationRules = [
     .isISO8601()
     .withMessage("Valid date is required")
     .custom((value) => {
-      const date = new Date(value);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      // Parse the incoming date as UTC
+      const appointmentDate = new Date(value + "T00:00:00.000Z");
+      const todayUTC = new Date();
+      // Set to start of day in UTC
+      todayUTC.setUTCHours(0, 0, 0, 0);
 
-      if (date < today) {
+      if (appointmentDate < todayUTC) {
         throw new Error("Date cannot be in the past");
       }
       return true;
@@ -65,18 +67,19 @@ router.get("/doctor", authenticateDoctorToken, async (req, res) => {
     const filter = { doctorId: req.doctor._id };
 
     if (date) {
-      const targetDate = new Date(date);
-      const nextDay = new Date(targetDate);
-      nextDay.setDate(nextDay.getDate() + 1);
+      // Parse date as UTC to avoid timezone shifts
+      const targetDateUTC = new Date(date + "T00:00:00.000Z");
+      const nextDayUTC = new Date(targetDateUTC);
+      nextDayUTC.setUTCDate(nextDayUTC.getUTCDate() + 1);
 
       filter.date = {
-        $gte: targetDate,
-        $lt: nextDay,
+        $gte: targetDateUTC,
+        $lt: nextDayUTC,
       };
     } else if (startDate && endDate) {
       filter.date = {
-        $gte: new Date(startDate),
-        $lte: new Date(endDate),
+        $gte: new Date(startDate + "T00:00:00.000Z"),
+        $lte: new Date(endDate + "T23:59:59.999Z"),
       };
     }
     // No default date filtering for doctors - they should see all their availability
@@ -125,11 +128,11 @@ router.get("/", async (req, res) => {
       };
     } else {
       // Only return future dates if no specific date range is provided
-      // For testing: allow same-day bookings up to current time
-      const today = new Date();
-      today.setHours(0, 0, 0, 0); // Start of today
+      // Allow same-day bookings up to current time
+      const todayUTC = new Date();
+      todayUTC.setUTCHours(0, 0, 0, 0); // Start of today in UTC
       filter.date = {
-        $gte: today,
+        $gte: todayUTC,
       };
     }
 
@@ -143,29 +146,29 @@ router.get("/", async (req, res) => {
       .map((avail) => {
         let availableSlots = avail.slots;
 
-        // For today's appointments, filter out slots that have already passed
-        const availDate = avail.date.toISOString().split("T")[0];
-        const today = new Date().toISOString().split("T")[0];
+        // For today's appointments, filter out slots that have already passed (UTC-based)
+        const availDateUTC = avail.date.toISOString().split("T")[0];
+        const todayUTC = new Date().toISOString().split("T")[0];
 
-        if (availDate === today) {
-          // For testing: Show ALL today's slots regardless of time
-          // In production, you would want to filter out past slots
-          availableSlots = avail.slots;
-
-          // Uncomment below for production time filtering:
-          /*
-          const now = new Date();
+        if (availDateUTC === todayUTC) {
+          // Production time filtering: Remove past slots with 30-minute buffer
+          const nowUTC = new Date();
           availableSlots = avail.slots.filter((slot) => {
             const [slotHour, slotMinute] = slot.split(":").map(Number);
-            const slotTime = slotHour * 60 + slotMinute;
-            const currentTimeMinutes = now.getHours() * 60 + now.getMinutes();
-            return slotTime >= currentTimeMinutes + 30; // 30 minutes buffer
+
+            // Create slot time in UTC
+            const slotTimeUTC = new Date(avail.date);
+            slotTimeUTC.setUTCHours(slotHour, slotMinute, 0, 0);
+
+            // Add 30-minute buffer
+            const bufferTimeUTC = new Date(nowUTC.getTime() + 30 * 60 * 1000);
+
+            return slotTimeUTC >= bufferTimeUTC;
           });
-          */
         }
 
         return {
-          date: availDate, // YYYY-MM-DD format
+          date: availDateUTC, // YYYY-MM-DD format
           slots: availableSlots,
           doctorId: avail.doctorId._id,
           doctorName: avail.doctorId.name,
@@ -230,9 +233,10 @@ router.post(
       const { date, slots } = req.body;
 
       // Check if availability already exists for this doctor and date
+      const appointmentDateUTC = new Date(date + "T00:00:00.000Z");
       const existingAvailability = await Availability.findOne({
         doctorId: req.doctor._id,
-        date: new Date(date),
+        date: appointmentDateUTC,
       });
 
       if (existingAvailability) {
@@ -247,7 +251,7 @@ router.post(
 
       const availability = new Availability({
         doctorId: req.doctor._id,
-        date: new Date(date),
+        date: appointmentDateUTC,
         slots: uniqueSlots,
       });
 
