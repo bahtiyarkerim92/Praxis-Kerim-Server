@@ -23,6 +23,7 @@ module.exports = () => (req, res, next) => {
     "https://telemedker.com",
     "https://www.telemedker.com",
     "https://api.telemedker.com",
+    "https://telemedker-dashboard.netlify.app",
   ];
 
   // Production trusted domains
