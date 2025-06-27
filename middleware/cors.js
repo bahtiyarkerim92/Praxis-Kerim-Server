@@ -10,6 +10,8 @@ module.exports = () => (req, res, next) => {
   // Development origins
   const devOrigins = [
     "http://localhost:3000",
+    "http://localhost:5173", // Vue dashboard
+    "http://localhost:5174", // Vue dashboard alternate port
     "http://localhost:8000",
     "http://localhost:8888",
   ];

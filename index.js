@@ -12,6 +12,7 @@ async function start() {
   expressConfig(app);
   setupLocale(app);
   await databaseConfig(app);
+
   routerConfig(app);
   app.listen(process.env.PORT, () =>
     console.log("REST Service started!", process.env.PORT)

@@ -139,6 +139,7 @@ authController.post(
     const { email, password, ip } = req.body;
 
     try {
+      // Database login
       const user = await User.findOne({ email: email.toLowerCase() });
 
       if (!user) {
