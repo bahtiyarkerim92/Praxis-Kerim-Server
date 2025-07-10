@@ -237,6 +237,7 @@ const getPatientDocuments = async (req, res) => {
     const query = {
       patient: patientId,
       status: { $ne: "deleted" },
+      uploadedBy: "doctor", // Only return doctor uploads
     };
 
     if (category) {
@@ -268,6 +269,7 @@ const getPatientDocuments = async (req, res) => {
         $match: {
           patient: patient._id,
           status: { $ne: "deleted" },
+          uploadedBy: "doctor", // Only count doctor uploads
         },
       },
       {
