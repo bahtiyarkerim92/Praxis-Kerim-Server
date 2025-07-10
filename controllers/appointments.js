@@ -14,6 +14,8 @@ const {
   isJoinable,
   getMinutesUntilJoinable,
   hasAppointmentPassed,
+  autoCompleteAppointments,
+  getAppointmentsDueForCompletion,
 } = require("../utils/appointmentUtils");
 
 const router = express.Router();
@@ -68,8 +70,8 @@ const appointmentValidationRules = [
     .matches(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/)
     .withMessage("Slot must be in HH:MM format"),
   body("plan")
-    .isIn(["prescription", "consultation"])
-    .withMessage("Plan must be either 'prescription' or 'consultation'"),
+    .isIn(["consultation"])
+    .withMessage("Plan must be 'consultation'"),
   body("reason")
     .optional()
     .trim()
@@ -605,10 +607,11 @@ router.put(
   [
     param("id").isMongoId().withMessage("Invalid appointment ID"),
     body("reason")
-      .optional()
+      .notEmpty()
+      .withMessage("Cancellation reason is required")
       .trim()
-      .isLength({ max: 500 })
-      .withMessage("Cancellation reason must not exceed 500 characters"),
+      .isLength({ min: 10, max: 500 })
+      .withMessage("Cancellation reason must be between 10 and 500 characters"),
   ],
   handleValidationErrors,
   async (req, res) => {
@@ -622,9 +625,11 @@ router.put(
       }
 
       // Check permissions - both doctors and patients can cancel
+      let userType = null;
       if (req.user) {
         const isDoctor = req.user.name; // Doctor model has name field
         const isPatient = !isDoctor;
+        userType = isDoctor ? "doctor" : "patient";
 
         if (
           isDoctor &&
@@ -660,9 +665,13 @@ router.put(
       appointment.status = "cancelled";
       appointment.cancelledAt = new Date(); // UTC timestamp
 
+      // Track who cancelled and the reason
+      if (userType) {
+        appointment.cancelledBy = userType;
+      }
+
       if (req.body.reason) {
-        appointment.notes =
-          (appointment.notes || "") + `\n[Cancelled] ${req.body.reason}`;
+        appointment.cancelReason = req.body.reason;
       }
 
       await appointment.save();
@@ -794,5 +803,43 @@ router.patch(
     }
   }
 );
+
+// POST /api/appointments/auto-complete - Trigger auto-completion of appointments
+router.post("/auto-complete", async (req, res) => {
+  try {
+    const result = await autoCompleteAppointments();
+
+    res.json({
+      success: result.success,
+      message: result.message,
+      completedCount: result.completedCount,
+    });
+  } catch (error) {
+    console.error("Error in auto-complete endpoint:", error);
+    res.status(500).json({
+      message: "Error running auto-complete",
+      error: error.message,
+    });
+  }
+});
+
+// GET /api/appointments/due-for-completion - Check appointments due for completion
+router.get("/due-for-completion", async (req, res) => {
+  try {
+    const result = await getAppointmentsDueForCompletion();
+
+    res.json({
+      success: result.success,
+      count: result.count,
+      appointments: result.appointments,
+    });
+  } catch (error) {
+    console.error("Error checking appointments due for completion:", error);
+    res.status(500).json({
+      message: "Error checking appointments",
+      error: error.message,
+    });
+  }
+});
 
 module.exports = router;

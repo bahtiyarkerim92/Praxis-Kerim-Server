@@ -23,7 +23,7 @@ async function createAdminDoctor() {
       email: "admin@telemedker.com",
       password: hashedPassword,
       specialties: ["Administration", "General Medicine"],
-      plansOffered: ["consultation", "prescriptions"],
+      plansOffered: ["consultation"],
       bio: "System administrator and general practitioner",
       photoUrl: "",
       experience: 10,

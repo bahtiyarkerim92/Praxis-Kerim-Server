@@ -6,7 +6,19 @@ const cookieParser = require("cookie-parser");
 
 module.exports = (app) => {
   app.use(express.urlencoded({ extended: true, limit: "10mb" }));
-  app.use(express.json({ limit: "10mb" }));
+
+  // Apply JSON parser to all routes EXCEPT file upload routes
+  app.use((req, res, next) => {
+    // Skip JSON parsing for file upload routes
+    if (
+      req.path.includes("/upload") ||
+      req.path.includes("/documents/patient-upload")
+    ) {
+      return next();
+    }
+    express.json({ limit: "10mb" })(req, res, next);
+  });
+
   app.use("*", cors());
   app.use(cookieParser());
 

@@ -23,7 +23,7 @@ const appointmentSchema = new mongoose.Schema({
   plan: {
     type: String,
     required: true,
-    enum: ["prescription", "consultation"],
+    enum: ["consultation"],
   },
   status: {
     type: String,
@@ -52,6 +52,14 @@ const appointmentSchema = new mongoose.Schema({
   },
   cancelledAt: {
     type: Date,
+  },
+  cancelledBy: {
+    type: String,
+    enum: ["patient", "doctor"],
+  },
+  cancelReason: {
+    type: String,
+    trim: true,
   },
   completedAt: {
     type: Date,

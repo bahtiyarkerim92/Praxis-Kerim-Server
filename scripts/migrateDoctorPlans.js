@@ -17,25 +17,26 @@ async function migrateDoctorPlans() {
       let needsUpdate = false;
       const newPlans = [...doctor.plansOffered];
 
-      // Replace old plan names with new ones
+      // Replace old plan names with new ones - now only consultation is supported
       const planMapping = {
         basic: "consultation",
         standard: "consultation",
-        premium: "prescriptions",
+        premium: "consultation",
+        prescriptions: "consultation",
         "follow-up": "consultation",
       };
 
       for (let i = 0; i < newPlans.length; i++) {
-        if (planMapping[newPlans[i]]) {
-          newPlans[i] = planMapping[newPlans[i]];
+        if (planMapping[newPlans[i]] || newPlans[i] !== "consultation") {
+          newPlans[i] = "consultation";
           needsUpdate = true;
         }
       }
 
-      // Remove duplicates and ensure we have valid plans
+      // Remove duplicates and ensure we have valid plans - only consultation is valid now
       const uniquePlans = [...new Set(newPlans)];
       const validPlans = uniquePlans.filter((plan) =>
-        ["consultation", "prescriptions"].includes(plan)
+        ["consultation"].includes(plan)
       );
 
       // If no valid plans, default to consultation

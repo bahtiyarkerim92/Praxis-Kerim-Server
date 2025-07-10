@@ -110,8 +110,142 @@ function hasAppointmentPassed(appointment) {
   return nowUTC > endTimeUTC;
 }
 
+const Appointment = require("../models/Appointment");
+
+/**
+ * Auto-complete appointments that have passed their scheduled time + 30 minutes
+ * This should be called periodically (e.g., every 15 minutes) via a cron job
+ */
+const autoCompleteAppointments = async () => {
+  try {
+    console.log("Running auto-complete check for appointments...");
+
+    // Get current time
+    const now = new Date();
+
+    // Find confirmed consultation appointments that should be auto-completed
+    const appointmentsToComplete = await Appointment.find({
+      status: "confirmed",
+      plan: "consultation", // Only consultation appointments (video calls)
+    })
+      .populate("doctorId", "name email")
+      .populate("patientId", "firstName lastName email");
+
+    let completedCount = 0;
+
+    for (const appointment of appointmentsToComplete) {
+      // Parse appointment date and time
+      const appointmentDate = new Date(appointment.date);
+      const [hours, minutes] = appointment.slot.split(":").map(Number);
+
+      // Create appointment datetime in UTC
+      const appointmentDateTime = new Date(appointmentDate);
+      appointmentDateTime.setUTCHours(hours, minutes, 0, 0);
+
+      // Calculate time 30 minutes after appointment
+      const completionTime = new Date(
+        appointmentDateTime.getTime() + 30 * 60 * 1000
+      );
+
+      // Check if current time is past completion time
+      if (now >= completionTime) {
+        console.log(
+          `Auto-completing appointment ${appointment._id} - scheduled for ${appointmentDateTime.toISOString()}, completion time was ${completionTime.toISOString()}`
+        );
+
+        appointment.status = "completed";
+        appointment.completedAt = now;
+        appointment.notes =
+          (appointment.notes || "") +
+          `\n[Auto-completed] Appointment automatically marked as completed 30 minutes after scheduled time.`;
+
+        await appointment.save();
+        completedCount++;
+
+        // Log the completion
+        console.log(
+          `✅ Auto-completed appointment for patient ${appointment.patientId.firstName} ${appointment.patientId.lastName} with Dr. ${appointment.doctorId.name}`
+        );
+      }
+    }
+
+    if (completedCount > 0) {
+      console.log(`Auto-completed ${completedCount} appointments`);
+    } else {
+      console.log("No appointments to auto-complete");
+    }
+
+    return {
+      success: true,
+      completedCount,
+      message: `Auto-completed ${completedCount} appointments`,
+    };
+  } catch (error) {
+    console.error("Error in auto-complete appointments:", error);
+    return {
+      success: false,
+      error: error.message,
+    };
+  }
+};
+
+/**
+ * Get appointments that are due for auto-completion (for monitoring)
+ */
+const getAppointmentsDueForCompletion = async () => {
+  try {
+    const now = new Date();
+
+    const appointmentsDue = await Appointment.find({
+      status: "confirmed",
+      plan: "consultation",
+    })
+      .populate("doctorId", "name email")
+      .populate("patientId", "firstName lastName email");
+
+    const due = [];
+
+    for (const appointment of appointmentsDue) {
+      const appointmentDate = new Date(appointment.date);
+      const [hours, minutes] = appointment.slot.split(":").map(Number);
+
+      const appointmentDateTime = new Date(appointmentDate);
+      appointmentDateTime.setUTCHours(hours, minutes, 0, 0);
+
+      const completionTime = new Date(
+        appointmentDateTime.getTime() + 30 * 60 * 1000
+      );
+
+      if (now >= completionTime) {
+        due.push({
+          id: appointment._id,
+          patient: `${appointment.patientId.firstName} ${appointment.patientId.lastName}`,
+          doctor: appointment.doctorId.name,
+          scheduledFor: appointmentDateTime,
+          shouldCompleteAt: completionTime,
+          overdue: Math.floor((now - completionTime) / (60 * 1000)), // minutes overdue
+        });
+      }
+    }
+
+    return {
+      success: true,
+      count: due.length,
+      appointments: due,
+    };
+  } catch (error) {
+    console.error("Error checking appointments due for completion:", error);
+    return {
+      success: false,
+      error: error.message,
+    };
+  }
+};
+
 module.exports = {
   isJoinable,
   getMinutesUntilJoinable,
   hasAppointmentPassed,
+  autoCompleteAppointments,
+  getAppointmentsDueForCompletion,
 };
