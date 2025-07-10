@@ -734,6 +734,10 @@ const getUploadedDocuments = async (req, res) => {
     const patientId = req.user.id;
     const { category, page = 1, limit = 20 } = req.query;
 
+    console.log("=== GET UPLOADED DOCUMENTS DEBUG ===");
+    console.log("Patient ID:", patientId);
+    console.log("Category filter:", category);
+
     // Build query for documents uploaded by this patient
     const query = {
       patient: patientId,
@@ -745,10 +749,23 @@ const getUploadedDocuments = async (req, res) => {
       query.category = category;
     }
 
+    console.log("Query for uploaded documents:", query);
+
     const documents = await Document.find(query)
       .sort({ documentDate: -1, uploadedAt: -1 })
       .limit(parseInt(limit))
       .skip((parseInt(page) - 1) * parseInt(limit));
+
+    console.log(
+      "Found uploaded documents:",
+      documents.map((d) => ({
+        _id: d._id,
+        title: d.title,
+        uploadedBy: d.uploadedBy,
+        category: d.category,
+        originalFilename: d.originalFilename,
+      }))
+    );
 
     const total = await Document.countDocuments(query);
 
