@@ -10,7 +10,8 @@ const s3Client = new S3Client({
 });
 
 // S3 bucket configuration
-const bucketName = process.env.AWS_S3_BUCKETNAME;
+const bucketName = process.env.AWS_S3_BUCKETNAME; // Private bucket for patient data
+const publicBucketName = process.env.AWS_S3_PUBLIC_BUCKETNAME; // Public bucket for profile images
 const region = process.env.AWS_S3_REGION || "eu-north-1";
 
 if (!bucketName) {
@@ -18,8 +19,14 @@ if (!bucketName) {
   process.exit(1);
 }
 
+if (!publicBucketName) {
+  console.error("AWS_S3_PUBLIC_BUCKETNAME environment variable is required");
+  process.exit(1);
+}
+
 module.exports = {
   s3Client,
-  bucketName,
+  bucketName, // Private bucket
+  publicBucketName, // Public bucket
   region,
 };

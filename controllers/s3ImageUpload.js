@@ -1,6 +1,10 @@
 const { uploadSingle } = require("../services/aws/imageUpload");
 const { PutObjectCommand, DeleteObjectCommand } = require("@aws-sdk/client-s3");
-const { s3Client, bucketName, region } = require("../services/aws/s3Config");
+const {
+  s3Client,
+  publicBucketName,
+  region,
+} = require("../services/aws/s3Config");
 const path = require("path");
 
 // Upload image to S3
@@ -48,9 +52,9 @@ exports.uploadImage = (req, res) => {
       const extension = path.extname(req.file.originalname);
       const key = `doctors/${uniqueSuffix}${extension}`;
 
-      // Upload to S3 using AWS SDK v3
+      // Upload to S3 using AWS SDK v3 - Use PUBLIC bucket for profile images
       const uploadParams = {
-        Bucket: bucketName,
+        Bucket: publicBucketName,
         Key: key,
         Body: req.file.buffer,
         ContentType: req.file.mimetype,
@@ -67,12 +71,12 @@ exports.uploadImage = (req, res) => {
       await s3Client.send(command);
 
       // Generate the S3 URL
-      const imageUrl = `https://${bucketName}.s3.${region}.amazonaws.com/${key}`;
+      const imageUrl = `https://${publicBucketName}.s3.${region}.amazonaws.com/${key}`;
 
       console.log("File uploaded successfully:", {
         key: key,
         location: imageUrl,
-        bucket: bucketName,
+        bucket: publicBucketName,
       });
 
       // Return the S3 URL
@@ -106,7 +110,7 @@ exports.deleteImage = async (req, res) => {
     }
 
     const deleteParams = {
-      Bucket: bucketName,
+      Bucket: publicBucketName,
       Key: key,
     };
 
