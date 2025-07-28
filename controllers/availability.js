@@ -113,18 +113,19 @@ router.get("/", async (req, res) => {
     }
 
     if (date) {
-      const targetDate = new Date(date);
-      const nextDay = new Date(targetDate);
-      nextDay.setDate(nextDay.getDate() + 1);
+      // Parse date as UTC to avoid timezone shifts (same as doctor endpoint)
+      const targetDateUTC = new Date(date + "T00:00:00.000Z");
+      const nextDayUTC = new Date(targetDateUTC);
+      nextDayUTC.setUTCDate(nextDayUTC.getUTCDate() + 1);
 
       filter.date = {
-        $gte: targetDate,
-        $lt: nextDay,
+        $gte: targetDateUTC,
+        $lt: nextDayUTC,
       };
     } else if (startDate && endDate) {
       filter.date = {
-        $gte: new Date(startDate),
-        $lte: new Date(endDate),
+        $gte: new Date(startDate + "T00:00:00.000Z"),
+        $lte: new Date(endDate + "T23:59:59.999Z"),
       };
     } else {
       // Only return future dates if no specific date range is provided

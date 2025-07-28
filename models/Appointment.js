@@ -28,8 +28,8 @@ const appointmentSchema = new mongoose.Schema({
   status: {
     type: String,
     required: true,
-    enum: ["upcoming", "cancelled", "completed"],
-    default: "upcoming",
+    enum: ["pending_payment", "upcoming", "cancelled", "completed"],
+    default: "pending_payment",
   },
   notes: {
     type: String,
@@ -72,6 +72,31 @@ const appointmentSchema = new mongoose.Schema({
   meetingUrl: {
     type: String,
     default: "",
+  },
+
+  // Payment related fields
+  paymentId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Payment",
+  },
+  paymentStatus: {
+    type: String,
+    enum: ["pending", "completed", "failed", "cancelled", "refunded"],
+    default: "pending",
+  },
+  paymentAmount: {
+    type: Number,
+    default: 0,
+  },
+  paymentCurrency: {
+    type: String,
+    enum: ["BGN", "EUR"],
+    default: "EUR",
+  },
+  country: {
+    type: String,
+    enum: ["Bulgaria", "Germany"],
+    default: "Germany",
   },
 });
 

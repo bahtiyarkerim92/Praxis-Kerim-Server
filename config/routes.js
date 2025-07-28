@@ -6,6 +6,7 @@ const appointmentsController = require("../controllers/appointments");
 const sickNotesController = require("../controllers/sickNotes");
 const prescriptionsController = require("../controllers/prescriptions");
 const documentsController = require("../controllers/documents");
+const paymentsController = require("../controllers/payments");
 const s3ImageUploadController = require("../controllers/s3ImageUpload");
 const simpleImageUploadController = require("../controllers/simpleImageUpload");
 const { authenticateDoctorToken } = require("../middleware/doctorAuth");
@@ -23,6 +24,7 @@ module.exports = (app) => {
   app.use("/api/doctors", doctorsController);
   app.use("/api/availability", availabilityController);
   app.use("/api/appointments", appointmentsController);
+  app.use("/api/payments", paymentsController);
   app.use("/api/sick-notes", sickNotesController);
   app.use("/api/prescriptions", prescriptionsController);
   app.use("/api/documents", documentsController);
