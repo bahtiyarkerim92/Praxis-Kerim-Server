@@ -24,6 +24,7 @@ module.exports = () => (req, res, next) => {
     "https://telemediker.com",
     "https://www.telemediker.com",
     "https://patient.telemediker.com", // Patient app subdomain
+    "https://doctor.telemediker.com", // Doctor app subdomain
     "https://api.telemediker.com",
     "https://telemediker-dashboard.netlify.app",
   ];
@@ -32,6 +33,7 @@ module.exports = () => (req, res, next) => {
   const prodTrustedDomains = [
     "telemediker.com",
     "www.telemediker.com",
+    "doctor.telemediker.com", // Doctor app subdomain
     "patient.telemediker.com", // Patient app subdomain
     "api.telemediker.com",
   ];
