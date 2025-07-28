@@ -17,32 +17,28 @@ const userSchema = new mongoose.Schema({
   address: {
     street: {
       type: String,
+      trim: true,
     },
     number: {
       type: String,
-      required: true,
       trim: true,
     },
     postCode: {
       type: String,
-      required: true,
       trim: true,
     },
     city: {
       type: String,
-      required: true,
       trim: true,
     },
     country: {
       code: {
         type: String,
-        required: true,
         uppercase: true,
         trim: true,
       },
       name: {
         type: String,
-        required: true,
         trim: true,
       },
     },
@@ -88,6 +84,10 @@ const userSchema = new mongoose.Schema({
     default: Date.now,
   },
   isEmailValidated: {
+    type: Boolean,
+    default: false,
+  },
+  isProfileComplete: {
     type: Boolean,
     default: false,
   },

@@ -4,6 +4,7 @@ const User = require("../models/User");
 const crypto = require("crypto");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const { check } = require("express-validator");
 const {
   sendValidationEmail,
   sendForgotPassword,
@@ -13,6 +14,11 @@ const {
   validateRegisterRequest,
   handleValidation,
 } = require("../validations/registerValidation");
+
+const {
+  validateMinimalRegisterRequest,
+  handleMinimalValidation,
+} = require("../validations/minimalRegisterValidation");
 
 const {
   validateEmailValidationRequest,
@@ -115,14 +121,106 @@ authController.post(
       console.log("Creating user with data:", user);
 
       await user.save();
-      const validationToken = generateValidationToken(user);
-      await sendValidationEmail(user.email, validationToken, locale);
+
+      // Try to send validation email, but don't fail registration if it fails
+      try {
+        const validationToken = generateValidationToken(user);
+        await sendValidationEmail(user.email, validationToken, locale);
+        console.log("✅ Validation email sent successfully");
+      } catch (emailError) {
+        console.warn(
+          "⚠️ Failed to send validation email, but registration continues:",
+          emailError.message
+        );
+        // For development: automatically validate the email if sending fails
+        if (process.env.NODE_ENV === "development") {
+          const validationToken = generateValidationToken(user);
+          const validationUrl = `${process.env.FRONTEND_DOMAIN}${locale}/validate-email?token=${validationToken}`;
+
+          console.log("🔧 Development mode: Email auto-validated");
+          console.log("📧 Validation URL (for testing):", validationUrl);
+
+          user.isEmailValidated = true;
+          await user.save();
+        }
+      }
+
       res.status(201).json({
         message: "User registered successfully",
         userId: user._id,
+        emailValidationRequired: !user.isEmailValidated,
       });
     } catch (error) {
       console.error("Registration error:", error);
+      if (error.code === 11000) {
+        return res.status(400).json({ message: "Email already exists" });
+      }
+      res.status(500).json({ message: "Error during registration" });
+    }
+  }
+);
+
+// Minimal registration endpoint for progressive registration
+authController.post(
+  "/register-minimal",
+  validateMinimalRegisterRequest,
+  handleMinimalValidation,
+  async (req, res) => {
+    const locale = req.headers["accept-language"] || "en";
+    console.log("Minimal registration request:", { locale, body: req.body });
+    try {
+      const { firstName, lastName, email, password, termsAccepted } = req.body;
+
+      // Check for existing user
+      const existingUser = await User.findOne({ email: email.toLowerCase() });
+      if (existingUser) {
+        return res.status(400).json({ message: "Email already exists" });
+      }
+
+      // Hash the password
+      const hashedPassword = await bcrypt.hash(password, 10);
+
+      // Create new user with minimal data
+      const user = new User({
+        firstName,
+        lastName,
+        email: email.toLowerCase(),
+        password: hashedPassword,
+        termsAccepted,
+        isProfileComplete: false,
+        emailTokenIssuedAt: new Date(),
+      });
+
+      console.log("Creating minimal user with data:", user);
+
+      await user.save();
+
+      // Try to send validation email, but don't fail registration if it fails
+      try {
+        const validationToken = generateValidationToken(user);
+        await sendValidationEmail(user.email, validationToken, locale);
+        console.log("✅ Validation email sent successfully");
+      } catch (emailError) {
+        console.warn(
+          "⚠️ Failed to send validation email, but registration continues:",
+          emailError.message
+        );
+        // For development: automatically validate the email if sending fails
+        if (process.env.NODE_ENV === "development") {
+          user.isEmailValidated = true;
+          await user.save();
+          console.log("🔧 Development mode: Email auto-validated");
+        }
+      }
+
+      res.status(201).json({
+        message: "User registered successfully",
+        userId: user._id,
+        isProfileComplete: false,
+        emailValidationRequired: !user.isEmailValidated,
+      });
+    } catch (error) {
+      console.error("Minimal registration error:", error);
       if (error.code === 11000) {
         return res.status(400).json({ message: "Email already exists" });
       }
@@ -135,6 +233,11 @@ authController.post(
   "/login",
 
   async (req, res) => {
+    console.log("🛰️ Request Origin:", req.headers.origin);
+    console.log("🌐 Request Referer:", req.headers.referer);
+    console.log("🧠 User-Agent:", req.headers["user-agent"]);
+    console.log("🔌 Remote IP:", req.ip);
+    console.log("🔧 Full Headers:", req.headers);
     console.log("🔴 [Auth Login] Request:", req.body);
     const { email, password, ip } = req.body;
 
@@ -366,16 +469,48 @@ authController.post(
 
       console.log("user", user);
 
-      const resetUrl = `${process.env.FRONTEND_DOMAIN}${
-        locale === "en" ? "" : `${locale}/`
-      }reset-password?token=${resetToken}`;
+      // Ensure reset password URLs point to the patient app
+      const patientAppDomain =
+        process.env.PATIENT_APP_DOMAIN ||
+        (process.env.NODE_ENV === "development"
+          ? "http://localhost:5173"
+          : process.env.FRONTEND_DOMAIN);
+
+      const resetUrl = `${patientAppDomain}/reset-password?token=${resetToken}`;
+
+      console.log("🔧 Environment variables:");
+      console.log("PATIENT_APP_DOMAIN:", process.env.PATIENT_APP_DOMAIN);
+      console.log("FRONTEND_DOMAIN:", process.env.FRONTEND_DOMAIN);
+      console.log("🔗 Reset URL:", resetUrl);
 
       console.log("sending email");
-      await sendForgotPassword(email, resetUrl, locale, user.companyName);
-
-      res.status(200).json({
-        message: "Password reset email sent successfully",
+      console.log("📧 Email parameters:", {
+        email,
+        resetUrl,
+        locale,
+        companyName: user.companyName,
       });
+
+      try {
+        await sendForgotPassword(
+          email,
+          resetUrl,
+          locale,
+          user.companyName || "Telemediker"
+        );
+        console.log("✅ Password reset email sent successfully");
+
+        res.status(200).json({
+          message: "Password reset email sent successfully",
+        });
+      } catch (emailError) {
+        console.error("❌ Error sending password reset email:", emailError);
+
+        // Still return success to prevent email enumeration attacks
+        res.status(200).json({
+          message: "Password reset email sent successfully",
+        });
+      }
     } catch (error) {
       console.error(error);
       res.status(500).json({ message: "Internal server error" });
@@ -452,6 +587,7 @@ authController.get("/status", authenticateToken, (req, res) => {
     isPaid:
       req.user.activeSubscription?.status === "active" ||
       req.user.activeSubscription?.status === "trial",
+    isProfileComplete: req.user.isProfileComplete || false,
   });
 });
 
@@ -527,5 +663,130 @@ authController.get("/profile", authenticateToken, async (req, res) => {
     res.status(500).json({ message: "Error fetching profile data" });
   }
 });
+
+// Complete profile endpoint for progressive registration
+authController.put("/complete-profile", authenticateToken, async (req, res) => {
+  try {
+    const user = req.user;
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const {
+      gender,
+      birthDate,
+      address,
+      addressNumber,
+      postCode,
+      city,
+      country,
+      countryName,
+      nationalIdNumber,
+      isExistingPatient,
+      insurance,
+    } = req.body;
+
+    // Update user with additional profile data
+    user.gender = gender;
+    user.birthday = birthDate ? new Date(birthDate) : undefined;
+
+    if (address || addressNumber || postCode || city || country) {
+      user.address = {
+        street: address,
+        number: addressNumber,
+        postCode,
+        city,
+        country: {
+          code: country,
+          name: countryName,
+        },
+      };
+    }
+
+    // Country-specific data
+    if (country === "BG") {
+      user.nationalIdNumber = nationalIdNumber;
+      user.isExistingPatient = isExistingPatient;
+    }
+
+    if (country === "DE" && insurance) {
+      user.insurance = insurance;
+    }
+
+    // Mark profile as complete
+    user.isProfileComplete = true;
+
+    await user.save();
+
+    res.status(200).json({
+      message: "Profile completed successfully",
+      isProfileComplete: true,
+    });
+  } catch (error) {
+    console.error("Profile completion error:", error);
+    res.status(500).json({ message: "Error completing profile" });
+  }
+});
+
+// Change password endpoint for authenticated users
+authController.post(
+  "/change-password",
+  authenticateToken,
+  [
+    check("currentPassword")
+      .trim()
+      .not()
+      .isEmpty()
+      .withMessage("Current password is required"),
+    check("newPassword")
+      .trim()
+      .isLength({ min: 6 })
+      .withMessage("New password must be at least 6 characters long"),
+  ],
+  handleValidation,
+  async (req, res) => {
+    try {
+      const { currentPassword, newPassword } = req.body;
+      const userId = req.user._id;
+
+      // Get the user from database
+      const user = await User.findById(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Verify current password
+      const isCurrentPasswordValid = await bcrypt.compare(
+        currentPassword,
+        user.password
+      );
+      if (!isCurrentPasswordValid) {
+        return res
+          .status(400)
+          .json({ message: "Current password is incorrect" });
+      }
+
+      // Check if new password is different from current password
+      const isSamePassword = await bcrypt.compare(newPassword, user.password);
+      if (isSamePassword) {
+        return res.status(400).json({
+          message: "New password must be different from current password",
+        });
+      }
+
+      // Hash the new password
+      const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+
+      // Update user's password
+      user.password = hashedNewPassword;
+      await user.save();
+
+      res.status(200).json({ message: "Password changed successfully" });
+    } catch (error) {
+      console.error("Change password error:", error);
+      res.status(500).json({ message: "Error changing password" });
+    }
+  }
+);
 
 module.exports = authController;

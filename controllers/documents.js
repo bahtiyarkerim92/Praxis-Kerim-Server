@@ -1209,6 +1209,157 @@ const getDocumentCategories = async (req, res) => {
   }
 };
 
+/**
+ * Get all documents for the current patient (Patient side) - Combined received and uploaded
+ */
+const getPatientAllDocuments = async (req, res) => {
+  try {
+    const patientId = req.user.id;
+    const { category } = req.query;
+
+    // Categories to organize documents
+    const categories = [
+      "medical-reports",
+      "lab-results",
+      "radiology-reports",
+      "insurance-documents",
+    ];
+
+    // Get received documents (uploaded by doctors)
+    const receivedQuery = {
+      patient: patientId,
+      status: { $ne: "deleted" },
+      uploadedBy: "doctor",
+      visibility: { $in: ["patient", "both"] },
+    };
+
+    // Get uploaded documents (uploaded by patient)
+    const uploadedQuery = {
+      patient: patientId,
+      status: { $ne: "deleted" },
+      uploadedBy: "patient",
+    };
+
+    // Organize documents by category
+    const received = {};
+    const uploaded = {};
+
+    // Initialize empty arrays for each category
+    categories.forEach((cat) => {
+      received[cat] = [];
+      uploaded[cat] = [];
+    });
+
+    // Fetch received documents
+    const receivedDocs = await Document.find(receivedQuery)
+      .populate("doctor", "firstName lastName specialization")
+      .sort({ documentDate: -1, uploadedAt: -1 });
+
+    // Fetch uploaded documents
+    const uploadedDocs = await Document.find(uploadedQuery).sort({
+      documentDate: -1,
+      uploadedAt: -1,
+    });
+
+    // Organize received documents by category
+    receivedDocs.forEach((doc) => {
+      if (received[doc.category]) {
+        received[doc.category].push(doc);
+      }
+    });
+
+    // Organize uploaded documents by category
+    uploadedDocs.forEach((doc) => {
+      if (uploaded[doc.category]) {
+        uploaded[doc.category].push(doc);
+      }
+    });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        received: received,
+        uploaded: uploaded,
+      },
+    });
+  } catch (error) {
+    console.error("Get patient all documents error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to retrieve documents",
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Get presigned URL for document viewing/downloading (Patient side)
+ */
+const getDocumentPresignedUrl = async (req, res) => {
+  try {
+    const { documentId } = req.params;
+    const patientId = req.user.id;
+
+    // Find the document and verify patient access
+    const document = await Document.findOne({
+      _id: documentId,
+      patient: patientId,
+      status: { $ne: "deleted" },
+      $or: [
+        { uploadedBy: "patient" }, // Patient's own documents
+        { uploadedBy: "doctor", visibility: { $in: ["patient", "both"] } }, // Doctor documents visible to patient
+      ],
+    });
+
+    if (!document) {
+      return res.status(404).json({
+        success: false,
+        message: "Document not found or access denied",
+      });
+    }
+
+    // Generate presigned URL for S3
+    const { generatePresignedUrl } = require("../services/aws/documentUpload");
+
+    try {
+      // Use s3Key (full path) instead of filename for presigned URL
+      const s3Key =
+        document.s3Key ||
+        `patients/${patientId}/documents/${document.category}/${document.filename}`;
+
+      console.log("🔍 Document presigned URL request:", {
+        documentId: document._id,
+        filename: document.filename,
+        s3Key: document.s3Key,
+        calculatedS3Key: s3Key,
+        category: document.category,
+      });
+
+      const presignedUrl = await generatePresignedUrl(s3Key);
+
+      res.status(200).json({
+        success: true,
+        presignedUrl: presignedUrl,
+        expiresIn: 3600, // 1 hour
+      });
+    } catch (s3Error) {
+      console.error("S3 presigned URL error:", s3Error);
+      // Fallback: return document info for direct access attempt
+      res.status(200).json({
+        success: false,
+        message: "Could not generate secure URL",
+      });
+    }
+  } catch (error) {
+    console.error("Get document presigned URL error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to get document URL",
+      error: error.message,
+    });
+  }
+};
+
 // Router routes
 // Doctor routes
 router.post("/upload", authenticateDoctorToken, uploadDocumentFile);
@@ -1229,8 +1380,11 @@ router.get(
 
 // Patient routes
 router.post("/patient-upload", authenticateToken, patientUploadDocument);
+router.get("/patient", authenticateToken, getPatientAllDocuments);
 router.get("/received", authenticateToken, getReceivedDocuments);
 router.get("/uploaded", authenticateToken, getUploadedDocuments);
+router.get("/:documentId/view", authenticateToken, getDocumentPresignedUrl);
+router.get("/:documentId/download", authenticateToken, getDocumentPresignedUrl);
 router.post("/view/:documentId", authenticateToken, viewSecureDocument);
 router.get("/my-documents", authenticateToken, getMyDocuments);
 router.get("/my-documents/:documentId", authenticateToken, getMyDocumentById);

@@ -257,6 +257,11 @@ doctorAuthController.get("/me", async (req, res) => {
 
 // POST /api/doctor-auth/logout - Doctor logout
 doctorAuthController.post("/logout", async (req, res) => {
+  console.log(
+    "🔍 Doctor logout called from:",
+    req.headers.referer || "unknown"
+  );
+  console.log("🔍 Request origin:", req.headers.origin || "unknown");
   try {
     const refreshToken = req.cookies.refreshToken;
 

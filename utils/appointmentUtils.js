@@ -41,9 +41,9 @@ function isJoinable(appointment) {
     appointment.slot
   );
 
-  // Meeting is joinable 20 minutes before the start time
+  // Meeting is joinable 5 minutes before the start time
   const joinableTimeUTC = new Date(
-    appointmentDateUTC.getTime() - 20 * 60 * 1000
+    appointmentDateUTC.getTime() - 5 * 60 * 1000
   );
 
   // Meeting stays joinable for 2 hours after start time
@@ -73,9 +73,9 @@ function getMinutesUntilJoinable(appointment) {
     appointment.slot
   );
 
-  // Meeting is joinable 20 minutes before the start time
+  // Meeting is joinable 5 minutes before the start time
   const joinableTimeUTC = new Date(
-    appointmentDateUTC.getTime() - 20 * 60 * 1000
+    appointmentDateUTC.getTime() - 5 * 60 * 1000
   );
 
   return Math.ceil(
@@ -108,6 +108,37 @@ function hasAppointmentPassed(appointment) {
   );
 
   return nowUTC > endTimeUTC;
+}
+
+/**
+ * Check if an appointment should be auto-completed (30 minutes after start)
+ * @param {Object} appointment - The appointment object
+ * @returns {boolean} Whether the appointment should be completed
+ */
+function shouldAutoComplete(appointment) {
+  if (
+    !appointment.date ||
+    !appointment.slot ||
+    appointment.status !== "upcoming"
+  ) {
+    return false;
+  }
+
+  // Get current UTC time
+  const nowUTC = new Date();
+
+  // Convert slot time (Bulgaria local time) to UTC
+  const appointmentDateUTC = convertSlotToUTC(
+    appointment.date,
+    appointment.slot
+  );
+
+  // Auto-complete 30 minutes after start time
+  const autoCompleteTimeUTC = new Date(
+    appointmentDateUTC.getTime() + 30 * 60 * 1000
+  );
+
+  return nowUTC >= autoCompleteTimeUTC;
 }
 
 const Appointment = require("../models/Appointment");
@@ -246,6 +277,7 @@ module.exports = {
   isJoinable,
   getMinutesUntilJoinable,
   hasAppointmentPassed,
+  shouldAutoComplete,
   autoCompleteAppointments,
   getAppointmentsDueForCompletion,
 };

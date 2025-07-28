@@ -13,7 +13,7 @@ const cookieOptions = {
     domain: ".telemedker.com", // Root domain to allow sharing between subdomains
   },
   development: {
-    httpOnly: true,
+    httpOnly: false, // Allow client-side access for cross-domain auth detection
     secure: false, // Allow non-secure in development
     sameSite: "lax",
     path: "/",

@@ -14,6 +14,7 @@ const {
   isJoinable,
   getMinutesUntilJoinable,
   hasAppointmentPassed,
+  shouldAutoComplete,
   autoCompleteAppointments,
   getAppointmentsDueForCompletion,
 } = require("../utils/appointmentUtils");
@@ -140,9 +141,19 @@ router.get("/doctor", authenticateDoctorToken, async (req, res) => {
       .limit(parseInt(limit))
       .skip(skip);
 
-    // Add joinable status for consultation appointments
-    const appointmentsWithJoinable = appointments.map((appointment) => {
+    // Add joinable status and auto-complete logic for consultation appointments
+    const appointmentsWithJoinable = appointments.map(async (appointment) => {
       const appointmentObj = appointment.toObject();
+
+      // Auto-complete if needed
+      if (shouldAutoComplete(appointmentObj)) {
+        appointment.status = "completed";
+        appointment.completedAt = new Date();
+        await appointment.save();
+        appointmentObj.status = "completed";
+        appointmentObj.completedAt = appointment.completedAt;
+      }
+
       if (appointmentObj.plan === "consultation") {
         appointmentObj.isJoinable = isJoinable(appointmentObj);
         appointmentObj.minutesUntilJoinable =
@@ -152,11 +163,25 @@ router.get("/doctor", authenticateDoctorToken, async (req, res) => {
       return appointmentObj;
     });
 
+    const resolvedAppointments = await Promise.all(appointmentsWithJoinable);
     const total = await Appointment.countDocuments(filter);
+
+    // Debug: Log all appointments being sent to doctor
+    console.log(
+      `📋 Sending ${resolvedAppointments.length} appointments to doctor:`,
+      resolvedAppointments.map((apt) => ({
+        id: apt._id,
+        date: apt.date,
+        slot: apt.slot,
+        status: apt.status,
+        isJoinable: apt.isJoinable,
+        minutesUntilJoinable: apt.minutesUntilJoinable,
+      }))
+    );
 
     res.json({
       success: true,
-      data: appointmentsWithJoinable,
+      data: resolvedAppointments,
       pagination: {
         total,
         page: parseInt(page),
@@ -290,9 +315,19 @@ router.get("/", authenticateToken, async (req, res) => {
       .limit(parseInt(limit))
       .skip(skip);
 
-    // Add joinable status for consultation appointments
-    const appointmentsWithJoinable = appointments.map((appointment) => {
+    // Add joinable status and auto-complete logic for consultation appointments
+    const appointmentsWithJoinable = appointments.map(async (appointment) => {
       const appointmentObj = appointment.toObject();
+
+      // Auto-complete if needed
+      if (shouldAutoComplete(appointmentObj)) {
+        appointment.status = "completed";
+        appointment.completedAt = new Date();
+        await appointment.save();
+        appointmentObj.status = "completed";
+        appointmentObj.completedAt = appointment.completedAt;
+      }
+
       if (appointmentObj.plan === "consultation") {
         appointmentObj.isJoinable = isJoinable(appointmentObj);
         appointmentObj.minutesUntilJoinable =
@@ -302,11 +337,12 @@ router.get("/", authenticateToken, async (req, res) => {
       return appointmentObj;
     });
 
+    const resolvedAppointments = await Promise.all(appointmentsWithJoinable);
     const total = await Appointment.countDocuments(filter);
 
     res.json({
       success: true,
-      data: appointmentsWithJoinable,
+      data: resolvedAppointments,
       pagination: {
         total,
         page: parseInt(page),
@@ -426,12 +462,12 @@ router.post(
         });
       }
 
-      // Check if slot is already booked
+      // Check if slot is already booked (only upcoming appointments)
       const existingAppointment = await Appointment.findOne({
         doctorId,
         date: appointmentDateUTC,
         slot,
-        status: { $in: ["pending", "confirmed"] },
+        status: "upcoming",
       });
 
       if (existingAppointment) {
@@ -448,6 +484,7 @@ router.post(
         plan,
         reason,
         notes,
+        status: "upcoming", // All new appointments are upcoming
       });
 
       // Create Daily.co room for consultation appointments

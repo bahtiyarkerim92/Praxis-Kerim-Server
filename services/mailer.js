@@ -7,7 +7,7 @@ const { getResetPasswordTemplate } = require("../emailTemplates/resetPassword");
 
 // Create SES service client
 const sesClient = new SESClient({
-  region: process.env.AWS_SES_REGION,
+  region: "eu-north-1", // Back to Stockholm
   credentials: {
     accessKeyId: process.env.AWS_SES_ACCESS_KEY_ID,
     secretAccessKey: process.env.AWS_SES_SECRET_ACCESS_KEY,
@@ -23,13 +23,17 @@ const sesClient = new SESClient({
 //  */
 
 async function sendValidationEmail(email, token, locale) {
-  const validationUrl = `${process.env.FRONTEND_DOMAIN}${locale}/validate-email?token=${token}`;
+  // Use patient app URL for email validation instead of marketing website
+  const patientAppDomain =
+    process.env.PATIENT_APP_DOMAIN || "http://localhost:5173";
+  const validationUrl = `${patientAppDomain}/validate-email?token=${token}`;
+  const fromEmail = process.env.AWS_SES_FROM_EMAIL || "info@telemediker.com";
 
   try {
     const htmlContent = await getConfirmEmailTemplate(validationUrl, locale);
 
     const params = {
-      Source: "Telemediker <info@telemediker.com>",
+      Source: fromEmail,
       Destination: {
         ToAddresses: [email],
       },

@@ -190,6 +190,42 @@ router.get("/:id/pdf", authenticateDoctorToken, async (req, res) => {
   }
 });
 
+// Get presigned URL for viewing a sick note PDF (Patient only)
+router.get("/:id/patient-pdf", authenticateToken, async (req, res) => {
+  try {
+    const sickNoteId = req.params.id;
+
+    // Find the sick note and verify patient has access
+    const sickNote = await SickNote.findOne({
+      _id: sickNoteId,
+      patientId: req.user._id,
+    });
+
+    if (!sickNote) {
+      return res.status(404).json({
+        success: false,
+        message: "Sick note not found or access denied",
+      });
+    }
+
+    // Generate presigned URL for secure access
+    const presignedUrl = await generatePresignedUrl(sickNote.pdfKey, 3600); // 1 hour expiry
+
+    res.json({
+      success: true,
+      presignedUrl,
+      expiresIn: 3600,
+    });
+  } catch (error) {
+    console.error("Error generating presigned URL:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to generate secure access URL",
+      error: error.message,
+    });
+  }
+});
+
 // Get all sick notes for a doctor
 router.get("/doctor", authenticateDoctorToken, async (req, res) => {
   try {

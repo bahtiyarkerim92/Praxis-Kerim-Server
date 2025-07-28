@@ -10,28 +10,30 @@ module.exports = () => (req, res, next) => {
   // Development origins
   const devOrigins = [
     "http://localhost:3000",
-    "http://localhost:5173", // Vue dashboard
-    "http://localhost:5174", // Vue dashboard alternate port
+    "http://localhost:5173", // Patient app
+    "http://localhost:5174", // Vue dashboard
     "http://localhost:8000",
     "http://localhost:8888",
+    "capacitor://localhost",
   ];
   // Development trusted domains
   const devTrustedDomains = ["localhost"];
 
   // Production origins
   const prodOrigins = [
-    "https://telemedker.com",
-    "https://www.telemedker.com",
-    "https://api.telemedker.com",
-    "https://telemedker-dashboard.netlify.app",
+    "https://telemediker.com",
+    "https://www.telemediker.com",
+    "https://patient.telemediker.com", // Patient app subdomain
+    "https://api.telemediker.com",
+    "https://telemediker-dashboard.netlify.app",
   ];
 
   // Production trusted domains
   const prodTrustedDomains = [
-    "telemedker.com",
-    "www.telemedker.com",
-
-    "api.telemedker.com",
+    "telemediker.com",
+    "www.telemediker.com",
+    "patient.telemediker.com", // Patient app subdomain
+    "api.telemediker.com",
   ];
 
   const allowedHeaders = [
