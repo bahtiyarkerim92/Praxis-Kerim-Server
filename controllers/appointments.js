@@ -1,4 +1,5 @@
 const express = require("express");
+const jwt = require("jsonwebtoken");
 const { body, param, query, validationResult } = require("express-validator");
 const {
   authenticateDoctorToken,
@@ -22,6 +23,80 @@ const {
 const router = express.Router();
 
 // --- Helper Functions ---
+
+// Combined authentication middleware for both doctors and patients
+const optionalCombinedAuth = async (req, res, next) => {
+  try {
+    console.log("🔐 Combined auth middleware called");
+    const authHeader = req.headers["authorization"];
+    const accessToken = authHeader && authHeader.split(" ")[1];
+
+    console.log("🔑 Auth header present:", !!authHeader);
+    console.log("🎫 Access token present:", !!accessToken);
+
+    if (accessToken) {
+      try {
+        // First try doctor authentication
+        console.log("🩺 Trying doctor authentication...");
+        const doctorPayload = jwt.verify(
+          accessToken,
+          process.env.DOCTOR_JWT_SECRET
+        );
+
+        if (doctorPayload && doctorPayload.userType === "doctor") {
+          const doctor = await Doctor.findById(doctorPayload.userId);
+          if (doctor && doctor.isActive) {
+            console.log("✅ Doctor authentication successful:", doctor.email);
+            req.doctor = doctor;
+            req.user = doctor; // Set user as doctor for unified access
+            req.isAuthenticated = true;
+            req.userType = "doctor";
+            return next();
+          }
+        }
+      } catch (error) {
+        console.log("❌ Doctor authentication failed:", error.message);
+        // Not a doctor token, try patient authentication
+      }
+
+      try {
+        // Try patient authentication
+        console.log("👤 Trying patient authentication...");
+        const patientPayload = jwt.verify(
+          accessToken,
+          process.env.ACCESS_TOKEN_SECRET
+        );
+
+        if (patientPayload) {
+          const patient = await User.findById(patientPayload.userId);
+          if (patient) {
+            console.log("✅ Patient authentication successful:", patient.email);
+            req.user = patient;
+            req.isAuthenticated = true;
+            req.userType = "patient";
+            return next();
+          } else {
+            console.log("❌ Patient not found in database");
+          }
+        }
+      } catch (error) {
+        console.log("❌ Patient authentication failed:", error.message);
+        // Not a valid patient token either
+      }
+    }
+
+    // No valid authentication found
+    console.log("❌ No valid authentication found");
+    return res.status(401).json({
+      message: "Authentication required",
+    });
+  } catch (error) {
+    console.error("Combined auth error:", error);
+    return res.status(500).json({
+      message: "Authentication error",
+    });
+  }
+};
 
 const handleValidationErrors = (req, res, next) => {
   const errors = validationResult(req);
@@ -640,7 +715,7 @@ router.put(
 // PUT /api/appointments/:id/cancel - Cancel appointment
 router.put(
   "/:id/cancel",
-  optionalDoctorAuth,
+  optionalCombinedAuth,
   [
     param("id").isMongoId().withMessage("Invalid appointment ID"),
     body("reason")
@@ -662,29 +737,26 @@ router.put(
       }
 
       // Check permissions - both doctors and patients can cancel
-      let userType = null;
-      if (req.user) {
-        const isDoctor = req.user.name; // Doctor model has name field
-        const isPatient = !isDoctor;
-        userType = isDoctor ? "doctor" : "patient";
+      const userType = req.userType;
 
-        if (
-          isDoctor &&
-          appointment.doctorId.toString() !== req.user._id.toString()
-        ) {
+      if (userType === "doctor") {
+        if (appointment.doctorId.toString() !== req.user._id.toString()) {
           return res.status(403).json({
-            message: "Access denied",
+            message:
+              "Access denied - doctor can only cancel their own appointments",
           });
         }
-
-        if (
-          isPatient &&
-          appointment.patientId.toString() !== req.user._id.toString()
-        ) {
+      } else if (userType === "patient") {
+        if (appointment.patientId.toString() !== req.user._id.toString()) {
           return res.status(403).json({
-            message: "Access denied",
+            message:
+              "Access denied - patient can only cancel their own appointments",
           });
         }
+      } else {
+        return res.status(403).json({
+          message: "Access denied - invalid user type",
+        });
       }
 
       if (appointment.status === "cancelled") {
@@ -703,9 +775,7 @@ router.put(
       appointment.cancelledAt = new Date(); // UTC timestamp
 
       // Track who cancelled and the reason
-      if (userType) {
-        appointment.cancelledBy = userType;
-      }
+      appointment.cancelledBy = userType;
 
       if (req.body.reason) {
         appointment.cancelReason = req.body.reason;

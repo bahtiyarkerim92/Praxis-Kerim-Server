@@ -10,7 +10,8 @@ const paymentSchema = new mongoose.Schema({
   appointmentId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Appointment",
-    required: true,
+    required: false, // Will be set after appointment is created in webhook
+    default: null,
   },
   doctorId: {
     type: mongoose.Schema.Types.ObjectId,
