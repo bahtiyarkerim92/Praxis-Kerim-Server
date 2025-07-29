@@ -82,11 +82,6 @@ const validateRegisterRequest = [
     .matches(/^\d{10}$/)
     .withMessage("Valid EGN is required for Bulgarian citizens"),
 
-  check("isExistingPatient")
-    .if(check("country").equals("BG"))
-    .isBoolean()
-    .withMessage("Existing patient status is required for Bulgarian users"),
-
   // German-specific validations
   check("insurance.type")
     .if(check("country").equals("DE"))

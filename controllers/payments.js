@@ -1120,4 +1120,85 @@ router.post("/process-dev-payment", authenticateToken, async (req, res) => {
   }
 });
 
+// GET /api/payments/history - Get user's payment history
+router.get("/history", authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    // Find all payments for this user with completed status
+    const payments = await Payment.find({
+      patientId: userId,
+      status: { $in: ["completed", "refunded"] },
+    })
+      .populate("appointmentId", "date slot reason")
+      .populate("doctorId", "name specialties")
+      .sort({ createdAt: -1 }) // Most recent first
+      .limit(50); // Limit to last 50 payments
+
+    // For each payment, get receipt URL from Stripe if available
+    const paymentHistory = await Promise.all(
+      payments.map(async (payment) => {
+        let receiptUrl = null;
+
+        // Try to get receipt URL from Stripe if payment intent exists
+        if (payment.stripePaymentIntentId) {
+          try {
+            const paymentIntent = await stripe.paymentIntents.retrieve(
+              payment.stripePaymentIntentId
+            );
+
+            // Get the latest charge for this payment intent
+            if (paymentIntent.latest_charge) {
+              const charge = await stripe.charges.retrieve(
+                paymentIntent.latest_charge
+              );
+              receiptUrl = charge.receipt_url;
+            }
+          } catch (stripeError) {
+            console.warn(
+              `Could not retrieve receipt for payment ${payment._id}:`,
+              stripeError.message
+            );
+          }
+        }
+
+        return {
+          id: payment._id,
+          date: payment.completedAt || payment.createdAt,
+          amount: payment.amount,
+          currency: payment.currency,
+          status: payment.status,
+          receiptUrl: receiptUrl,
+          appointment: payment.appointmentId
+            ? {
+                date: payment.appointmentId.date,
+                slot: payment.appointmentId.slot,
+                reason: payment.appointmentId.reason,
+              }
+            : null,
+          doctor: payment.doctorId
+            ? {
+                name: payment.doctorId.name,
+                specialties: payment.doctorId.specialties,
+              }
+            : null,
+        };
+      })
+    );
+
+    res.json({
+      success: true,
+      data: paymentHistory,
+      total: paymentHistory.length,
+    });
+  } catch (error) {
+    console.error("Error fetching payment history:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch payment history",
+      error: error.message,
+    });
+  }
+});
+
 module.exports = router;

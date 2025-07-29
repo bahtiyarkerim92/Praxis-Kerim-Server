@@ -949,4 +949,273 @@ router.get("/due-for-completion", async (req, res) => {
   }
 });
 
+// PUT /api/appointments/:id/reschedule - Reschedule appointment
+router.put(
+  "/:id/reschedule",
+  optionalCombinedAuth,
+  [
+    param("id").isMongoId().withMessage("Invalid appointment ID"),
+    body("newDate")
+      .isISO8601()
+      .toDate()
+      .withMessage("Valid new date is required (YYYY-MM-DD)"),
+    body("newSlot")
+      .notEmpty()
+      .withMessage("New time slot is required")
+      .matches(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/)
+      .withMessage("Valid time slot is required (HH:MM format)"),
+  ],
+  handleValidationErrors,
+  async (req, res) => {
+    try {
+      const appointment = await Appointment.findById(req.params.id);
+
+      if (!appointment) {
+        return res.status(404).json({
+          success: false,
+          message: "Appointment not found",
+        });
+      }
+
+      // Check permissions - both doctors and patients can reschedule
+      const userType = req.userType;
+
+      if (userType === "doctor") {
+        if (appointment.doctorId.toString() !== req.user._id.toString()) {
+          return res.status(403).json({
+            success: false,
+            message:
+              "Access denied - doctor can only reschedule their own appointments",
+          });
+        }
+      } else if (userType === "patient") {
+        if (appointment.patientId.toString() !== req.user._id.toString()) {
+          return res.status(403).json({
+            success: false,
+            message:
+              "Access denied - patient can only reschedule their own appointments",
+          });
+        }
+      } else {
+        return res.status(403).json({
+          success: false,
+          message: "Access denied - invalid user type",
+        });
+      }
+
+      // Check if appointment can be rescheduled
+      if (appointment.status === "cancelled") {
+        return res.status(400).json({
+          success: false,
+          message: "Cannot reschedule cancelled appointment",
+        });
+      }
+
+      if (appointment.status === "completed") {
+        return res.status(400).json({
+          success: false,
+          message: "Cannot reschedule completed appointment",
+        });
+      }
+
+      const { newDate, newSlot } = req.body;
+
+      console.log("🔄 Reschedule request received:", {
+        appointmentId: req.params.id,
+        newDate,
+        newSlot,
+        dateType: typeof newDate,
+      });
+
+      // Parse the new date to ensure it's in the correct format
+      // Handle both ISO string and date-only string formats
+      let newAppointmentDate;
+      if (typeof newDate === "string" && newDate.includes("T")) {
+        // Already an ISO string
+        newAppointmentDate = new Date(newDate);
+      } else if (newDate instanceof Date) {
+        // Already a Date object from validation
+        newAppointmentDate = newDate;
+      } else {
+        // Date-only string, append time
+        newAppointmentDate = new Date(newDate + "T00:00:00.000Z");
+      }
+
+      console.log("📅 Parsed appointment date:", newAppointmentDate);
+
+      // Validate the parsed date
+      if (isNaN(newAppointmentDate.getTime())) {
+        console.error("❌ Invalid date parsed:", newAppointmentDate);
+        return res.status(400).json({
+          success: false,
+          message: "Invalid date format provided",
+        });
+      }
+
+      // Check if the new date is in the future
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      if (newAppointmentDate < today) {
+        return res.status(400).json({
+          success: false,
+          message: "Cannot reschedule to a past date",
+        });
+      }
+
+      // Check if the new slot conflicts with existing appointments
+      console.log("🔍 Checking for conflicts with query:", {
+        doctorId: appointment.doctorId,
+        date: newAppointmentDate,
+        slot: newSlot,
+        status: { $in: ["upcoming", "pending_payment"] },
+        excludingAppointmentId: appointment._id,
+      });
+
+      const conflictingAppointment = await Appointment.findOne({
+        doctorId: appointment.doctorId,
+        date: newAppointmentDate,
+        slot: newSlot,
+        status: { $in: ["upcoming", "pending_payment"] },
+        _id: { $ne: appointment._id }, // Exclude current appointment
+      });
+
+      console.log("🔍 Conflict check result:", {
+        found: !!conflictingAppointment,
+        conflictingId: conflictingAppointment?._id,
+        conflictingStatus: conflictingAppointment?.status,
+      });
+
+      // Debug: Show all appointments for this doctor/date/slot combination
+      const allAppointmentsAtSlot = await Appointment.find({
+        doctorId: appointment.doctorId,
+        date: newAppointmentDate,
+        slot: newSlot,
+      }).select("_id status createdAt updatedAt");
+
+      console.log(
+        "🔍 All appointments at target slot:",
+        allAppointmentsAtSlot.map((apt) => ({
+          id: apt._id,
+          status: apt.status,
+          isCurrentAppointment:
+            apt._id.toString() === appointment._id.toString(),
+          createdAt: apt.createdAt,
+          updatedAt: apt.updatedAt,
+        }))
+      );
+
+      if (conflictingAppointment) {
+        console.log("❌ Conflict found - slot already taken");
+        return res.status(409).json({
+          success: false,
+          message: "The selected time slot is no longer available",
+        });
+      }
+
+      console.log("✅ No conflicts found - proceeding with reschedule");
+
+      // Store original date and slot for logging
+      const originalDate = appointment.date;
+      const originalSlot = appointment.slot;
+
+      console.log("📋 Current appointment details:", {
+        id: appointment._id,
+        currentDate: originalDate,
+        currentSlot: originalSlot,
+        status: appointment.status,
+        doctorId: appointment.doctorId,
+        patientId: appointment.patientId,
+      });
+
+      // Update the appointment
+      console.log("🔧 Updating appointment with:", {
+        newDate: newAppointmentDate,
+        newDateISO: newAppointmentDate.toISOString(),
+        newSlot: newSlot,
+      });
+
+      appointment.date = newAppointmentDate;
+      appointment.slot = newSlot;
+      appointment.updatedAt = new Date();
+
+      // Add reschedule tracking
+      if (!appointment.rescheduleHistory) {
+        appointment.rescheduleHistory = [];
+      }
+      appointment.rescheduleHistory.push({
+        from: {
+          date: originalDate,
+          slot: originalSlot,
+        },
+        to: {
+          date: newAppointmentDate,
+          slot: newSlot,
+        },
+        rescheduledBy: userType,
+        rescheduledAt: new Date(),
+      });
+
+      try {
+        await appointment.save();
+        console.log("✅ Appointment saved successfully");
+      } catch (saveError) {
+        if (saveError.code === 11000) {
+          console.log(
+            "❌ Duplicate key error during save - slot was taken by another appointment"
+          );
+
+          // Double-check for conflicts again
+          const lastMinuteConflict = await Appointment.findOne({
+            doctorId: appointment.doctorId,
+            date: newAppointmentDate,
+            slot: newSlot,
+            status: { $in: ["upcoming", "pending_payment"] },
+            _id: { $ne: appointment._id },
+          });
+
+          if (lastMinuteConflict) {
+            console.log("🔍 Found the conflicting appointment:", {
+              id: lastMinuteConflict._id,
+              status: lastMinuteConflict.status,
+              createdAt: lastMinuteConflict.createdAt,
+            });
+          }
+
+          return res.status(409).json({
+            success: false,
+            message:
+              "The selected time slot was just taken by another appointment. Please choose a different time.",
+          });
+        }
+        throw saveError; // Re-throw if it's not a duplicate key error
+      }
+
+      await appointment.populate("doctorId", "name email specialties");
+      await appointment.populate("patientId", "firstName lastName email");
+
+      console.log(
+        `📅 Appointment ${appointment._id} rescheduled by ${userType}`
+      );
+      console.log(
+        `   From: ${originalDate.toISOString().split("T")[0]} ${originalSlot}`
+      );
+      console.log(`   To: ${newDate} ${newSlot}`);
+
+      res.json({
+        success: true,
+        message: "Appointment rescheduled successfully",
+        data: appointment,
+      });
+    } catch (error) {
+      console.error("Error rescheduling appointment:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error rescheduling appointment",
+        error: error.message,
+      });
+    }
+  }
+);
+
 module.exports = router;

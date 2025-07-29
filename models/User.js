@@ -50,9 +50,7 @@ const userSchema = new mongoose.Schema({
   nationalIdNumber: {
     type: String,
   },
-  isExistingPatient: {
-    type: Boolean,
-  },
+
   insurance: {
     type: {
       type: String,

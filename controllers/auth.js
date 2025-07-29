@@ -78,7 +78,6 @@ authController.post(
         password,
         insurance,
         nationalIdNumber,
-        isExistingPatient,
         ipCountry,
         termsAccepted,
       } = req.body;
@@ -111,7 +110,6 @@ authController.post(
         email: email.toLowerCase(),
         password: hashedPassword,
         nationalIdNumber: country === "BG" ? nationalIdNumber : undefined,
-        isExistingPatient: country === "BG" ? isExistingPatient : undefined,
         insurance: country === "DE" ? insurance : undefined,
         termsAccepted,
         ipCountry,
@@ -637,23 +635,33 @@ authController.get("/profile", authenticateToken, async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Create response object based on user's country
+    // Create response object with individual address fields for editing
     const profileData = {
       fullName: `${user.firstName} ${user.lastName}`,
       email: user.email,
       gender: user.gender,
       birthday: user.birthday,
-      address: `${user.address.street} ${user.address.number}, ${user.address.postCode} ${user.address.city}, ${user.address.country.name}`,
+      // Return address as object with individual fields for EditProfile
+      address: {
+        street: user.address?.street || "",
+        number: user.address?.number || "",
+        postCode: user.address?.postCode || "",
+        city: user.address?.city || "",
+        country: {
+          code: user.address?.country?.code || "",
+          name: user.address?.country?.name || "",
+        },
+      },
     };
 
     // Add country-specific data
-    if (user.address.country.code === "BG") {
-      profileData.nationalIdNumber = user.nationalIdNumber;
-    } else if (user.address.country.code === "DE") {
+    if (user.address?.country?.code === "BG") {
+      profileData.nationalIdNumber = user.nationalIdNumber || "";
+    } else if (user.address?.country?.code === "DE") {
       profileData.insurance = {
-        type: user.insurance.type,
-        company: user.insurance.company,
-        number: user.insurance.number,
+        type: user.insurance?.type || "",
+        company: user.insurance?.company || "",
+        number: user.insurance?.number || "",
       };
     }
 
@@ -663,6 +671,91 @@ authController.get("/profile", authenticateToken, async (req, res) => {
     res.status(500).json({ message: "Error fetching profile data" });
   }
 });
+
+// PUT /auth/profile - Update profile information (separate from complete-profile)
+authController.put("/profile", authenticateToken, async (req, res) => {
+  try {
+    const user = req.user;
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const {
+      gender,
+      birthDate,
+      address,
+      addressNumber,
+      postCode,
+      city,
+      country,
+      nationalIdNumber,
+      insurance,
+    } = req.body;
+
+    // Update user data (allow partial updates)
+    const updateData = {};
+
+    if (gender) updateData.gender = gender;
+    if (birthDate) updateData.birthday = new Date(birthDate);
+    if (nationalIdNumber !== undefined)
+      updateData.nationalIdNumber = nationalIdNumber;
+
+    // Handle address update
+    if (address || addressNumber || postCode || city || country) {
+      updateData.address = {
+        street: address || user.address?.street || "",
+        number: addressNumber || user.address?.number || "",
+        postCode: postCode || user.address?.postCode || "",
+        city: city || user.address?.city || "",
+        country: {
+          code: country || user.address?.country?.code || "",
+          name: getCountryName(country) || user.address?.country?.name || "",
+        },
+      };
+    }
+
+    // Handle insurance update (for Germany)
+    if (insurance && country === "DE") {
+      updateData.insurance = {
+        type: insurance.type || user.insurance?.type || "",
+        company: insurance.company || user.insurance?.company || "",
+        number: insurance.number || user.insurance?.number || "",
+      };
+    }
+
+    // Update user in database
+    const updatedUser = await User.findByIdAndUpdate(user._id, updateData, {
+      new: true,
+      runValidators: true,
+    });
+
+    if (!updatedUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.status(200).json({
+      message: "Profile updated successfully",
+      user: {
+        fullName: `${updatedUser.firstName} ${updatedUser.lastName}`,
+        email: updatedUser.email,
+        gender: updatedUser.gender,
+        birthday: updatedUser.birthday,
+      },
+    });
+  } catch (error) {
+    console.error("Profile update error:", error);
+    res.status(500).json({ message: "Error updating profile" });
+  }
+});
+
+// Helper function to get country name from code
+function getCountryName(countryCode) {
+  const countries = {
+    BG: "Bulgaria",
+    DE: "Germany",
+  };
+  return countries[countryCode] || "";
+}
 
 // Complete profile endpoint for progressive registration
 authController.put("/complete-profile", authenticateToken, async (req, res) => {
@@ -682,7 +775,6 @@ authController.put("/complete-profile", authenticateToken, async (req, res) => {
       country,
       countryName,
       nationalIdNumber,
-      isExistingPatient,
       insurance,
     } = req.body;
 
@@ -706,7 +798,6 @@ authController.put("/complete-profile", authenticateToken, async (req, res) => {
     // Country-specific data
     if (country === "BG") {
       user.nationalIdNumber = nationalIdNumber;
-      user.isExistingPatient = isExistingPatient;
     }
 
     if (country === "DE" && insurance) {
