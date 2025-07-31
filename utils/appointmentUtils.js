@@ -51,6 +51,26 @@ function isJoinable(appointment) {
     appointmentDateUTC.getTime() + 2 * 60 * 60 * 1000
   );
 
+  // Debug logging
+  console.log("🔍 isJoinable Debug for appointment:", {
+    appointmentId: appointment._id,
+    date: appointment.date,
+    slot: appointment.slot,
+    plan: appointment.plan,
+    nowUTC: nowUTC.toISOString(),
+    appointmentDateUTC: appointmentDateUTC.toISOString(),
+    joinableTimeUTC: joinableTimeUTC.toISOString(),
+    endTimeUTC: endTimeUTC.toISOString(),
+    isJoinable: nowUTC >= joinableTimeUTC && nowUTC <= endTimeUTC,
+  });
+
+  // TEMPORARY: For testing, make appointments joinable immediately
+  // Remove this after debugging
+  if (appointment.status === "upcoming") {
+    console.log("🔧 TEMPORARY: Making appointment joinable for testing");
+    return true;
+  }
+
   return nowUTC >= joinableTimeUTC && nowUTC <= endTimeUTC;
 }
 
