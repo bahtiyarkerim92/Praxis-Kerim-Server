@@ -1120,6 +1120,83 @@ router.post("/process-dev-payment", authenticateToken, async (req, res) => {
   }
 });
 
+// POST /api/payments/process-webhook-manually - Manual webhook processing for production
+router.post(
+  "/process-webhook-manually",
+  authenticateToken,
+  async (req, res) => {
+    try {
+      const { sessionId } = req.body;
+
+      if (!sessionId) {
+        return res.status(400).json({
+          success: false,
+          message: "Session ID is required",
+        });
+      }
+
+      console.log("🔄 Manual webhook processing for session:", sessionId);
+
+      // Find the payment record
+      const payment = await Payment.findOne({ stripeSessionId: sessionId });
+      if (!payment) {
+        return res.status(404).json({
+          success: false,
+          message: "Payment not found",
+        });
+      }
+
+      // Check if appointment already exists
+      if (payment.appointmentId) {
+        return res.json({
+          success: true,
+          message: "Appointment already exists",
+          data: {
+            paymentId: payment._id,
+            appointmentId: payment.appointmentId,
+            status: payment.status,
+          },
+        });
+      }
+
+      // Get the Stripe session to simulate webhook
+      const session = await stripe.checkout.sessions.retrieve(sessionId);
+
+      if (session.payment_status !== "paid") {
+        return res.status(400).json({
+          success: false,
+          message: "Payment not completed",
+        });
+      }
+
+      // Process the webhook manually
+      await handleCheckoutSessionCompleted(session);
+
+      // Get updated payment
+      const updatedPayment = await Payment.findOne({
+        stripeSessionId: sessionId,
+      }).populate("appointmentId");
+
+      res.json({
+        success: true,
+        message: "Webhook processed successfully",
+        data: {
+          paymentId: updatedPayment._id,
+          appointmentId: updatedPayment.appointmentId?._id,
+          status: updatedPayment.status,
+        },
+      });
+    } catch (error) {
+      console.error("❌ Error in manual webhook processing:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to process webhook",
+        error: error.message,
+      });
+    }
+  }
+);
+
 // GET /api/payments/history - Get user's payment history
 router.get("/history", authenticateToken, async (req, res) => {
   try {
