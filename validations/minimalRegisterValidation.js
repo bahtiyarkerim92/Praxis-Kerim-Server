@@ -1,24 +1,6 @@
 const { check, validationResult } = require("express-validator");
 
 const validateMinimalRegisterRequest = [
-  // First Name Validation
-  check("firstName")
-    .trim()
-    .not()
-    .isEmpty()
-    .withMessage("First name is required")
-    .isLength({ min: 2, max: 50 })
-    .withMessage("First name must be between 2 and 50 characters"),
-
-  // Last Name Validation
-  check("lastName")
-    .trim()
-    .not()
-    .isEmpty()
-    .withMessage("Last name is required")
-    .isLength({ min: 2, max: 50 })
-    .withMessage("Last name must be between 2 and 50 characters"),
-
   // Email Validation
   check("email")
     .trim()

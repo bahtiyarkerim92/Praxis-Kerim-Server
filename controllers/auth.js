@@ -167,7 +167,7 @@ authController.post(
     const locale = req.headers["accept-language"] || "en";
     console.log("Minimal registration request:", { locale, body: req.body });
     try {
-      const { firstName, lastName, email, password, termsAccepted } = req.body;
+      const { email, password, termsAccepted } = req.body;
 
       // Check for existing user
       const existingUser = await User.findOne({ email: email.toLowerCase() });
@@ -180,8 +180,6 @@ authController.post(
 
       // Create new user with minimal data
       const user = new User({
-        firstName,
-        lastName,
         email: email.toLowerCase(),
         password: hashedPassword,
         termsAccepted,

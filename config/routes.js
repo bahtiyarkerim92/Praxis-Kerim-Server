@@ -3,12 +3,11 @@ const doctorAuthController = require("../controllers/doctorAuth");
 const doctorsController = require("../controllers/doctors");
 const availabilityController = require("../controllers/availability");
 const appointmentsController = require("../controllers/appointments");
-const sickNotesController = require("../controllers/sickNotes");
-const prescriptionsController = require("../controllers/prescriptions");
-const documentsController = require("../controllers/documents");
+
 const paymentsController = require("../controllers/payments");
 const s3ImageUploadController = require("../controllers/s3ImageUpload");
 const simpleImageUploadController = require("../controllers/simpleImageUpload");
+const fileTransferController = require("../controllers/fileTransfer");
 const { authenticateDoctorToken } = require("../middleware/doctorAuth");
 
 module.exports = (app) => {
@@ -25,9 +24,6 @@ module.exports = (app) => {
   app.use("/api/availability", availabilityController);
   app.use("/api/appointments", appointmentsController);
   app.use("/api/payments", paymentsController);
-  app.use("/api/sick-notes", sickNotesController);
-  app.use("/api/prescriptions", prescriptionsController);
-  app.use("/api/documents", documentsController);
 
   // --- S3 Upload Routes ---
   app.post(
@@ -55,4 +51,9 @@ module.exports = (app) => {
     "/api/upload/local/image",
     simpleImageUploadController.deleteImage
   );
+
+  // --- File Transfer Routes (Big Files - Disabled by default) ---
+  app.post("/api/files/presign", fileTransferController.generatePresignedUrl);
+  app.delete("/api/files/:key", fileTransferController.deleteFile);
+  app.get("/api/files/:key/info", fileTransferController.getFileInfo);
 };
