@@ -253,7 +253,8 @@ const setupSecurity = (app) => {
   app.use(helmet(helmetOptions));
 
   // CORS configuration
-  app.use(cors(corsOptions));
+  // CORS is handled by middleware/cors.js - disable this to avoid conflicts
+  // app.use(cors(corsOptions));
 
   // Prevent body logging for sensitive routes
   app.use(preventBodyLogging);
