@@ -9,6 +9,12 @@ const s3ImageUploadController = require("../controllers/s3ImageUpload");
 const simpleImageUploadController = require("../controllers/simpleImageUpload");
 const fileTransferController = require("../controllers/fileTransfer");
 const { authenticateDoctorToken } = require("../middleware/doctorAuth");
+const { authenticateToken } = require("../middleware/auth");
+
+// Secure file transfer routes (BG/DE compliant)
+const fallbackRoutes = require("../src/routes/filesFallback");
+const auditRoutes = require("../src/routes/auditLog");
+const dailyWebhookRoutes = require("../src/routes/webhooks/daily");
 
 module.exports = (app) => {
   app.get("/", (req, res) => {
@@ -56,4 +62,9 @@ module.exports = (app) => {
   app.post("/api/files/presign", fileTransferController.generatePresignedUrl);
   app.delete("/api/files/:key", fileTransferController.deleteFile);
   app.get("/api/files/:key/info", fileTransferController.getFileInfo);
+
+  // --- Secure File Transfer Routes (BG/DE Compliant) ---
+  app.use("/api/fallback", fallbackRoutes);
+  app.use("/api/audit", auditRoutes);
+  app.use("/api/webhooks/daily", dailyWebhookRoutes);
 };
