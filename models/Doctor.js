@@ -38,6 +38,25 @@ const doctorSchema = new mongoose.Schema(
       type: Number, // years of experience
       min: 0,
     },
+    // Rating system
+    rating: {
+      average: {
+        type: Number,
+        default: 0,
+        min: 0,
+        max: 5,
+      },
+      count: {
+        type: Number,
+        default: 0,
+        min: 0,
+      },
+      total: {
+        type: Number,
+        default: 0,
+        min: 0,
+      },
+    },
     isActive: {
       type: Boolean,
       default: true,

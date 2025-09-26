@@ -282,7 +282,7 @@ router.get(
   async (req, res) => {
     try {
       const appointment = await Appointment.findById(req.params.id)
-        .populate("doctorId", "name email specialties")
+        .populate("doctorId", "name email specialties photoUrl")
         .populate("patientId", "firstName lastName email");
 
       if (!appointment) {
@@ -443,7 +443,7 @@ router.get(
   async (req, res) => {
     try {
       const appointment = await Appointment.findById(req.params.id)
-        .populate("doctorId", "name email specialties")
+        .populate("doctorId", "name email specialties photoUrl")
         .populate("patientId", "firstName lastName email");
 
       if (!appointment) {
@@ -1214,6 +1214,98 @@ router.put(
         message: "Error rescheduling appointment",
         error: error.message,
       });
+    }
+  }
+);
+
+// POST /api/appointments/create-free - Create free appointment with coupon
+router.post(
+  "/create-free",
+  authenticateToken,
+  [
+    body("doctorId").isMongoId().withMessage("Valid doctor ID is required"),
+    body("date").isISO8601().toDate().withMessage("Valid date is required"),
+    body("slot").notEmpty().withMessage("Time slot is required"),
+    body("plan").isIn(["consultation"]).withMessage("Invalid plan"),
+    body("couponCode").notEmpty().withMessage("Coupon code is required"),
+  ],
+  handleValidationErrors,
+  async (req, res) => {
+    try {
+      const { doctorId, date, slot, plan, reason, couponCode } = req.body;
+      const patientId = req.user._id || req.user.userId;
+
+      console.log("🎫 Creating free appointment:", {
+        doctorId,
+        patientId,
+        date,
+        slot,
+        couponCode,
+      });
+
+      // Verify coupon is valid and active
+      const Coupon = require("../models/Coupon");
+      const coupon = await Coupon.findOne({
+        code: couponCode.toUpperCase(),
+        status: "active",
+      });
+
+      if (!coupon || !coupon.isValid) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid or expired coupon",
+        });
+      }
+
+      // Create the appointment
+      const appointment = new Appointment({
+        doctorId,
+        patientId,
+        date,
+        slot,
+        plan,
+        reason: reason || "General consultation",
+        status: "confirmed", // Auto-confirm free appointments
+        paymentStatus: "free_coupon",
+        couponCode: couponCode.toUpperCase(),
+      });
+
+      await appointment.save();
+      await appointment.populate("doctorId", "name email specialties photoUrl");
+      await appointment.populate("patientId", "firstName lastName email");
+
+      // Mark coupon as used immediately after successful appointment creation
+      coupon.status = "used";
+      coupon.usedBy = patientId;
+      coupon.usedAt = new Date();
+      coupon.appointmentId = appointment._id;
+      await coupon.save();
+
+      console.log(
+        `✅ Free appointment created: ${appointment._id} with coupon ${couponCode} - Coupon marked as used`
+      );
+
+      res.status(201).json({
+        success: true,
+        message: "Free appointment created successfully",
+        data: appointment,
+      });
+    } catch (error) {
+      console.error("Error creating free appointment:", error);
+
+      // Handle duplicate appointment error
+      if (error.code === 11000) {
+        res.status(400).json({
+          success: false,
+          message:
+            "This time slot is already booked. Please choose a different time.",
+        });
+      } else {
+        res.status(500).json({
+          success: false,
+          message: "Failed to create appointment",
+        });
+      }
     }
   }
 );

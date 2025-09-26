@@ -28,7 +28,13 @@ const appointmentSchema = new mongoose.Schema({
   status: {
     type: String,
     required: true,
-    enum: ["pending_payment", "upcoming", "cancelled", "completed"],
+    enum: [
+      "pending_payment",
+      "confirmed",
+      "upcoming",
+      "cancelled",
+      "completed",
+    ],
     default: "pending_payment",
   },
   notes: {
@@ -38,6 +44,12 @@ const appointmentSchema = new mongoose.Schema({
   reason: {
     type: String,
     trim: true,
+  },
+  // Coupon-related fields (paymentStatus exists below - will update that one)
+  couponCode: {
+    type: String,
+    trim: true,
+    uppercase: true,
   },
   createdAt: {
     type: Date,
@@ -81,7 +93,14 @@ const appointmentSchema = new mongoose.Schema({
   },
   paymentStatus: {
     type: String,
-    enum: ["pending", "completed", "failed", "cancelled", "refunded"],
+    enum: [
+      "pending",
+      "completed",
+      "failed",
+      "cancelled",
+      "refunded",
+      "free_coupon",
+    ],
     default: "pending",
   },
   paymentAmount: {

@@ -14,7 +14,7 @@ const EXP = Number(process.env.FILE_TRANSFER_PRESIGN_EXPIRY_SECONDS || 600);
 const ALLOWED_CT = new Set(
   String(
     process.env.ALLOWED_FILE_CT ||
-      "application/pdf,image/jpeg,image/png,image/webp,text/plain"
+      "application/pdf,image/jpeg,image/png,image/webp,text/plain,application/zip,application/x-zip-compressed,application/x-zip"
   )
     .split(",")
     .map((s) => s.trim())

@@ -15,6 +15,8 @@ const { authenticateToken } = require("../middleware/auth");
 const fallbackRoutes = require("../src/routes/filesFallback");
 const auditRoutes = require("../src/routes/auditLog");
 const dailyWebhookRoutes = require("../src/routes/webhooks/daily");
+const ratingsRoutes = require("../src/routes/ratings");
+const couponsRoutes = require("../src/routes/coupons");
 
 module.exports = (app) => {
   app.get("/", (req, res) => {
@@ -67,4 +69,10 @@ module.exports = (app) => {
   app.use("/api/fallback", fallbackRoutes);
   app.use("/api/audit", auditRoutes);
   app.use("/api/webhooks/daily", dailyWebhookRoutes);
+
+  // --- Rating Routes ---
+  app.use("/api/ratings", ratingsRoutes);
+
+  // --- Coupon Routes ---
+  app.use("/api/coupons", couponsRoutes);
 };
