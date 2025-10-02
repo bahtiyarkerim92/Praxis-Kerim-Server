@@ -28,6 +28,23 @@ const validateMinimalRegisterRequest = [
       }
       return true;
     }),
+
+  // Privacy Policy Accepted Validation
+  check("privacyAccepted")
+    .isBoolean()
+    .withMessage("Privacy policy acceptance must be a boolean")
+    .custom((value) => {
+      if (value !== true) {
+        throw new Error("You must accept the privacy policy");
+      }
+      return true;
+    }),
+
+  // Newsletter Subscription (Optional)
+  check("newsletterSubscribed")
+    .optional()
+    .isBoolean()
+    .withMessage("Newsletter subscription must be a boolean"),
 ];
 
 const handleMinimalValidation = (req, res, next) => {
