@@ -73,30 +73,30 @@ const couponSchema = new mongoose.Schema(
   }
 );
 
-// Generate unique coupon code before saving
-couponSchema.pre("save", async function (next) {
+// Generate sequential coupon code before validation (so it passes required check)
+couponSchema.pre("validate", async function (next) {
   if (!this.code) {
-    let isUnique = false;
-    let attempts = 0;
-    const maxAttempts = 10;
+    try {
+      // Find the highest coupon number
+      const lastCoupon = await mongoose.model("Coupon")
+        .findOne({})
+        .sort({ code: -1 })
+        .select("code");
 
-    while (!isUnique && attempts < maxAttempts) {
-      // Generate 8-character alphanumeric code
-      const code = generateCouponCode();
+      let nextNumber = 1;
 
-      // Check if code already exists
-      const existingCoupon = await mongoose.model("Coupon").findOne({ code });
-
-      if (!existingCoupon) {
-        this.code = code;
-        isUnique = true;
+      if (lastCoupon && lastCoupon.code) {
+        // Extract the number from the code (e.g., TELE000001 -> 1)
+        const match = lastCoupon.code.match(/TELE(\d+)/);
+        if (match) {
+          nextNumber = parseInt(match[1]) + 1;
+        }
       }
 
-      attempts++;
-    }
-
-    if (!isUnique) {
-      throw new Error("Failed to generate unique coupon code");
+      // Generate code with format TELE000001
+      this.code = `TELE${String(nextNumber).padStart(6, '0')}`;
+    } catch (error) {
+      return next(new Error("Failed to generate coupon code: " + error.message));
     }
   }
 
@@ -119,22 +119,5 @@ couponSchema.index({ doctorId: 1, status: 1 });
 couponSchema.index({ usedBy: 1 });
 couponSchema.index({ status: 1, createdAt: -1 });
 
-/**
- * Generate a random 8-character alphanumeric coupon code
- * Format: XXXX-XXXX for readability
- */
-function generateCouponCode() {
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-  let code = "";
-
-  for (let i = 0; i < 8; i++) {
-    if (i === 4) {
-      code += "-";
-    }
-    code += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-
-  return code;
-}
 
 module.exports = mongoose.model("Coupon", couponSchema);

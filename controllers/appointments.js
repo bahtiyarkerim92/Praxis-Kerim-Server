@@ -712,6 +712,66 @@ router.put(
   }
 );
 
+// PUT /api/appointments/:id/complete-meeting - Patient completes appointment after leaving meeting
+router.put(
+  "/:id/complete-meeting",
+  authenticateToken,
+  [param("id").isMongoId().withMessage("Invalid appointment ID")],
+  handleValidationErrors,
+  async (req, res) => {
+    try {
+      const appointment = await Appointment.findById(req.params.id);
+
+      if (!appointment) {
+        return res.status(404).json({
+          message: "Appointment not found",
+        });
+      }
+
+      // Check if patient owns this appointment
+      if (appointment.patientId.toString() !== req.user._id.toString()) {
+        return res.status(403).json({
+          message: "You can only complete your own appointments",
+        });
+      }
+
+      if (appointment.status === "completed") {
+        return res.status(200).json({
+          success: true,
+          message: "Appointment is already completed",
+          data: appointment,
+        });
+      }
+
+      if (appointment.status === "cancelled") {
+        return res.status(400).json({
+          message: "Cannot complete cancelled appointment",
+        });
+      }
+
+      // Mark as completed
+      appointment.status = "completed";
+      appointment.completedAt = new Date();
+      await appointment.save();
+
+      await appointment.populate("doctorId", "name email specialties");
+      await appointment.populate("patientId", "firstName lastName email");
+
+      res.json({
+        success: true,
+        message: "Meeting completed successfully",
+        data: appointment,
+      });
+    } catch (error) {
+      console.error("Error completing meeting:", error);
+      res.status(500).json({
+        message: "Error completing meeting",
+        error: error.message,
+      });
+    }
+  }
+);
+
 // PUT /api/appointments/:id/cancel - Cancel appointment
 router.put(
   "/:id/cancel",
@@ -1250,7 +1310,38 @@ router.post(
         status: "active",
       });
 
-      if (!coupon || !coupon.isValid) {
+      console.log("🔍 Coupon found:", {
+        found: !!coupon,
+        code: coupon?.code,
+        status: coupon?.status,
+        expiresAt: coupon?.expiresAt,
+        usedBy: coupon?.usedBy,
+        isValid: coupon?.isValid,
+        now: new Date(),
+      });
+
+      if (!coupon) {
+        return res.status(400).json({
+          success: false,
+          message: "Coupon not found",
+        });
+      }
+
+      // Manual validation check (instead of relying on virtual)
+      const now = new Date();
+      const isCouponValid = 
+        coupon.status === "active" && 
+        coupon.expiresAt > now && 
+        !coupon.usedBy;
+
+      console.log("🔍 Coupon validation details:", {
+        statusCheck: coupon.status === "active",
+        expiryCheck: coupon.expiresAt > now,
+        usedCheck: !coupon.usedBy,
+        overall: isCouponValid,
+      });
+
+      if (!isCouponValid) {
         return res.status(400).json({
           success: false,
           message: "Invalid or expired coupon",

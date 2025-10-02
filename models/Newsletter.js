@@ -51,4 +51,3 @@ newsletterSchema.index({ isActive: 1 });
 const Newsletter = mongoose.model("Newsletter", newsletterSchema);
 
 module.exports = Newsletter;
-

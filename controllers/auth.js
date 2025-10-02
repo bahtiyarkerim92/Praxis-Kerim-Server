@@ -194,7 +194,13 @@ authController.post(
     const locale = req.headers["accept-language"] || "en";
     console.log("Minimal registration request:", { locale, body: req.body });
     try {
-      const { email, password, termsAccepted, privacyAccepted, newsletterSubscribed } = req.body;
+      const {
+        email,
+        password,
+        termsAccepted,
+        privacyAccepted,
+        newsletterSubscribed,
+      } = req.body;
 
       // Check for existing user
       const existingUser = await User.findOne({ email: email.toLowerCase() });
@@ -232,7 +238,9 @@ authController.post(
             isActive: true,
           });
           await newsletter.save();
-          console.log("✅ Newsletter subscription created for minimal registration");
+          console.log(
+            "✅ Newsletter subscription created for minimal registration"
+          );
         } catch (newsletterError) {
           console.warn(
             "⚠️ Failed to create newsletter subscription:",
