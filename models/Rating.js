@@ -44,3 +44,5 @@ ratingSchema.index(
 ratingSchema.index({ doctorId: 1, createdAt: -1 });
 
 module.exports = mongoose.model("Rating", ratingSchema);
+
+

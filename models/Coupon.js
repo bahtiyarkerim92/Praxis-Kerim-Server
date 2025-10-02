@@ -4,40 +4,40 @@ const couponSchema = new mongoose.Schema(
   {
     code: {
       type: String,
-      required: false, // Will be auto-generated
+      required: true,
       unique: true,
       uppercase: true,
-      match: /^TELE\d{6}$/, // Format: TELE000001
+      trim: true,
     },
     doctorId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Doctor",
       required: true,
     },
+    description: {
+      type: String,
+      default: "Free consultation coupon",
+      trim: true,
+    },
     status: {
       type: String,
-      enum: ["unconfirmed", "active", "used", "expired", "rejected"],
+      enum: ["unconfirmed", "active", "used", "rejected"],
       default: "unconfirmed",
     },
-    // Approval tracking
-    approvedBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Doctor",
-      default: null, // Admin doctor who approved
-    },
-    approvedAt: {
+    // Expiration date - defaults to 30 days from creation
+    expiresAt: {
       type: Date,
-      default: null,
-    },
-    rejectedAt: {
-      type: Date,
-      default: null,
+      default: function () {
+        const date = new Date();
+        date.setDate(date.getDate() + 30);
+        return date;
+      },
     },
     // Usage tracking
     usedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      default: null, // Patient who used the coupon
+      default: null,
     },
     usedAt: {
       type: Date,
@@ -46,29 +46,26 @@ const couponSchema = new mongoose.Schema(
     appointmentId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Appointment",
-      default: null, // Appointment where coupon was used
+      default: null,
     },
-    // Coupon details
-    description: {
+    // Approval tracking
+    approvedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Doctor",
+      default: null,
+    },
+    approvedAt: {
+      type: Date,
+      default: null,
+    },
+    // Rejection tracking
+    rejectedAt: {
+      type: Date,
+      default: null,
+    },
+    rejectionReason: {
       type: String,
       trim: true,
-      maxlength: 200,
-      default: "Free consultation coupon",
-    },
-    expiresAt: {
-      type: Date,
-      required: true,
-      default: function () {
-        // Default expiration: 30 days from creation
-        const date = new Date();
-        date.setDate(date.getDate() + 30);
-        return date;
-      },
-    },
-    // BG/DE compliance
-    isAnonymous: {
-      type: Boolean,
-      default: true, // For privacy compliance
     },
   },
   {
@@ -76,71 +73,68 @@ const couponSchema = new mongoose.Schema(
   }
 );
 
-// Indexes for efficient queries
-couponSchema.index({ code: 1 }, { unique: true });
-couponSchema.index({ doctorId: 1, status: 1 });
-couponSchema.index({ status: 1, expiresAt: 1 });
-couponSchema.index({ usedBy: 1 });
-
-// Auto-generate coupon code before saving
+// Generate unique coupon code before saving
 couponSchema.pre("save", async function (next) {
-  if (this.isNew && !this.code) {
-    try {
-      console.log("🎫 Auto-generating coupon code...");
+  if (!this.code) {
+    let isUnique = false;
+    let attempts = 0;
+    const maxAttempts = 10;
 
-      // Find the highest existing coupon number
-      const lastCoupon = await mongoose
-        .model("Coupon")
-        .findOne({ code: /^TELE\d{6}$/ })
-        .sort({ code: -1 })
-        .select("code");
+    while (!isUnique && attempts < maxAttempts) {
+      // Generate 8-character alphanumeric code
+      const code = generateCouponCode();
 
-      console.log("🔍 Last coupon found:", lastCoupon);
+      // Check if code already exists
+      const existingCoupon = await mongoose.model("Coupon").findOne({ code });
 
-      let nextNumber = 1;
-      if (lastCoupon && lastCoupon.code) {
-        const lastNumber = parseInt(lastCoupon.code.replace("TELE", ""));
-        nextNumber = lastNumber + 1;
+      if (!existingCoupon) {
+        this.code = code;
+        isUnique = true;
       }
 
-      // Generate new code with zero-padding
-      this.code = `TELE${nextNumber.toString().padStart(6, "0")}`;
+      attempts++;
+    }
 
-      console.log("✅ Generated coupon code:", this.code);
-    } catch (error) {
-      console.error("❌ Error generating coupon code:", error);
-      return next(error);
+    if (!isUnique) {
+      throw new Error("Failed to generate unique coupon code");
     }
   }
+
   next();
 });
 
-// Virtual for checking if coupon is valid for use
+// Virtual property to check if coupon is valid
 couponSchema.virtual("isValid").get(function () {
-  return (
-    this.status === "active" && new Date() < this.expiresAt && !this.usedBy
-  );
+  const now = new Date();
+  return this.status === "active" && this.expiresAt > now && !this.usedBy;
 });
 
-// Virtual for human-readable status
-couponSchema.virtual("statusDisplay").get(function () {
-  switch (this.status) {
-    case "unconfirmed":
-      return "Pending Approval";
-    case "active":
-      return this.usedBy ? "Used" : "Active";
-    case "used":
-      return "Used";
-    case "expired":
-      return "Expired";
-    case "rejected":
-      return "Rejected";
-    default:
-      return this.status;
-  }
-});
-
-// Ensure virtuals are included in JSON output
+// Ensure virtuals are included in JSON responses
 couponSchema.set("toJSON", { virtuals: true });
+couponSchema.set("toObject", { virtuals: true });
+
+// Index for efficient queries
+couponSchema.index({ code: 1 });
+couponSchema.index({ doctorId: 1, status: 1 });
+couponSchema.index({ usedBy: 1 });
+couponSchema.index({ status: 1, createdAt: -1 });
+
+/**
+ * Generate a random 8-character alphanumeric coupon code
+ * Format: XXXX-XXXX for readability
+ */
+function generateCouponCode() {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  let code = "";
+
+  for (let i = 0; i < 8; i++) {
+    if (i === 4) {
+      code += "-";
+    }
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+
+  return code;
+}
 
 module.exports = mongoose.model("Coupon", couponSchema);

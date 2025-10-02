@@ -1,12 +1,16 @@
 const Rating = require("../models/Rating");
-const Doctor = require("../models/Doctor");
 const Appointment = require("../models/Appointment");
+const Doctor = require("../models/Doctor");
 
-// Submit a rating for a doctor after appointment
-const submitRating = async (req, res) => {
+/**
+ * Submit rating for doctor after completed appointment
+ * POST /api/ratings/submit
+ * Requires authentication
+ */
+exports.submitRating = async (req, res) => {
   try {
-    const { doctorId, appointmentId, rating } = req.body;
-    const patientId = req.user._id || req.user.userId;
+    const { doctorId, appointmentId, rating, isAnonymous } = req.body;
+    const patientId = req.user.userId;
 
     // Validate rating value
     if (!rating || rating < 1 || rating > 5) {
@@ -16,7 +20,15 @@ const submitRating = async (req, res) => {
       });
     }
 
-    // Verify appointment exists and belongs to patient
+    // Validate required fields
+    if (!doctorId || !appointmentId) {
+      return res.status(400).json({
+        success: false,
+        message: "Doctor ID and Appointment ID are required",
+      });
+    }
+
+    // Check if appointment exists and belongs to the patient
     const appointment = await Appointment.findOne({
       _id: appointmentId,
       patientId: patientId,
@@ -26,12 +38,17 @@ const submitRating = async (req, res) => {
     if (!appointment) {
       return res.status(404).json({
         success: false,
-        message: "Appointment not found or access denied",
+        message: "Appointment not found or does not belong to you",
       });
     }
 
-    // Check if appointment is completed (for privacy, allow rating even during call)
-    // This allows rating right after file transfer during the call
+    // Check if appointment is completed
+    if (appointment.status !== "completed") {
+      return res.status(400).json({
+        success: false,
+        message: "You can only rate completed appointments",
+      });
+    }
 
     // Check if rating already exists
     const existingRating = await Rating.findOne({
@@ -41,44 +58,14 @@ const submitRating = async (req, res) => {
     });
 
     if (existingRating) {
-      // Update existing rating
-      existingRating.rating = rating;
-      await existingRating.save();
-    } else {
-      // Create new rating
-      await Rating.create({
-        doctorId,
-        patientId,
-        appointmentId,
-        rating,
+      return res.status(400).json({
+        success: false,
+        message: "You have already rated this appointment",
       });
     }
 
-    // Update doctor's aggregate rating
-    await updateDoctorRating(doctorId);
-
-    res.json({
-      success: true,
-      message: "Rating submitted successfully",
-    });
-  } catch (error) {
-    console.error("Error submitting rating:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to submit rating",
-    });
-  }
-};
-
-// Get ratings for a doctor (aggregated data only for privacy)
-const getDoctorRating = async (req, res) => {
-  try {
-    const { doctorId } = req.params;
-
-    const doctor = await Doctor.findById(doctorId).select(
-      "rating name specialties"
-    );
-
+    // Verify doctor exists
+    const doctor = await Doctor.findById(doctorId);
     if (!doctor) {
       return res.status(404).json({
         success: false,
@@ -86,31 +73,115 @@ const getDoctorRating = async (req, res) => {
       });
     }
 
-    res.json({
+    // Create rating
+    const newRating = new Rating({
+      doctorId,
+      patientId,
+      appointmentId,
+      rating,
+      isAnonymous: isAnonymous !== undefined ? isAnonymous : true,
+    });
+
+    await newRating.save();
+
+    res.status(201).json({
       success: true,
+      message: "Rating submitted successfully",
       data: {
-        doctorId: doctor._id,
-        name: doctor.name,
-        specialties: doctor.specialties,
-        rating: doctor.rating || { average: 0, count: 0 },
+        rating: newRating.rating,
+        isAnonymous: newRating.isAnonymous,
       },
     });
   } catch (error) {
-    console.error("Error fetching doctor rating:", error);
+    console.error("Error submitting rating:", error);
     res.status(500).json({
       success: false,
-      message: "Failed to fetch rating",
+      message: "Failed to submit rating",
+      error: error.message,
     });
   }
 };
 
-// Check if patient can rate this doctor (has completed appointment)
-const canRateDoctor = async (req, res) => {
+/**
+ * Get doctor's aggregate rating
+ * GET /api/ratings/doctor/:doctorId
+ * Public endpoint
+ */
+exports.getDoctorRating = async (req, res) => {
+  try {
+    const { doctorId } = req.params;
+
+    // Validate doctor exists
+    const doctor = await Doctor.findById(doctorId);
+    if (!doctor) {
+      return res.status(404).json({
+        success: false,
+        message: "Doctor not found",
+      });
+    }
+
+    // Get all ratings for the doctor
+    const ratings = await Rating.find({ doctorId });
+
+    if (ratings.length === 0) {
+      return res.status(200).json({
+        success: true,
+        data: {
+          averageRating: 0,
+          totalRatings: 0,
+          ratingDistribution: {
+            5: 0,
+            4: 0,
+            3: 0,
+            2: 0,
+            1: 0,
+          },
+        },
+      });
+    }
+
+    // Calculate average rating
+    const totalRating = ratings.reduce((sum, r) => sum + r.rating, 0);
+    const averageRating = (totalRating / ratings.length).toFixed(1);
+
+    // Calculate rating distribution
+    const ratingDistribution = {
+      5: ratings.filter((r) => r.rating === 5).length,
+      4: ratings.filter((r) => r.rating === 4).length,
+      3: ratings.filter((r) => r.rating === 3).length,
+      2: ratings.filter((r) => r.rating === 2).length,
+      1: ratings.filter((r) => r.rating === 1).length,
+    };
+
+    res.status(200).json({
+      success: true,
+      data: {
+        averageRating: parseFloat(averageRating),
+        totalRatings: ratings.length,
+        ratingDistribution,
+      },
+    });
+  } catch (error) {
+    console.error("Error getting doctor rating:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to get doctor rating",
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Check if patient can rate doctor for specific appointment
+ * GET /api/ratings/can-rate/:doctorId/:appointmentId
+ * Requires authentication
+ */
+exports.canRateDoctor = async (req, res) => {
   try {
     const { doctorId, appointmentId } = req.params;
-    const patientId = req.user._id || req.user.userId;
+    const patientId = req.user.userId;
 
-    // Check if appointment exists and belongs to patient
+    // Check if appointment exists and belongs to the patient
     const appointment = await Appointment.findOne({
       _id: appointmentId,
       patientId: patientId,
@@ -118,63 +189,60 @@ const canRateDoctor = async (req, res) => {
     });
 
     if (!appointment) {
-      return res.json({
+      return res.status(200).json({
         success: true,
-        canRate: false,
-        reason: "Appointment not found",
+        data: {
+          canRate: false,
+          reason: "Appointment not found or does not belong to you",
+        },
       });
     }
 
-    // Check if already rated
+    // Check if appointment is completed
+    if (appointment.status !== "completed") {
+      return res.status(200).json({
+        success: true,
+        data: {
+          canRate: false,
+          reason: "Appointment not completed yet",
+        },
+      });
+    }
+
+    // Check if rating already exists
     const existingRating = await Rating.findOne({
       doctorId,
       patientId,
       appointmentId,
     });
 
-    res.json({
+    if (existingRating) {
+      return res.status(200).json({
+        success: true,
+        data: {
+          canRate: false,
+          reason: "You have already rated this appointment",
+          existingRating: {
+            rating: existingRating.rating,
+            createdAt: existingRating.createdAt,
+          },
+        },
+      });
+    }
+
+    res.status(200).json({
       success: true,
-      canRate: true,
-      hasRated: !!existingRating,
-      currentRating: existingRating?.rating || null,
+      data: {
+        canRate: true,
+        reason: "You can rate this appointment",
+      },
     });
   } catch (error) {
-    console.error("Error checking rating eligibility:", error);
+    console.error("Error checking if can rate:", error);
     res.status(500).json({
       success: false,
       message: "Failed to check rating eligibility",
+      error: error.message,
     });
   }
-};
-
-// Helper function to update doctor's aggregate rating
-async function updateDoctorRating(doctorId) {
-  try {
-    // Calculate aggregate rating from all ratings
-    const ratings = await Rating.find({ doctorId });
-
-    const count = ratings.length;
-    const total = ratings.reduce((sum, r) => sum + r.rating, 0);
-    const average = count > 0 ? Number((total / count).toFixed(1)) : 0;
-
-    // Update doctor document
-    await Doctor.findByIdAndUpdate(doctorId, {
-      "rating.average": average,
-      "rating.count": count,
-      "rating.total": total,
-    });
-
-    console.log(
-      `Updated doctor ${doctorId} rating: ${average}/5 (${count} ratings)`
-    );
-  } catch (error) {
-    console.error("Error updating doctor rating:", error);
-  }
-}
-
-module.exports = {
-  submitRating,
-  getDoctorRating,
-  canRateDoctor,
-  updateDoctorRating,
 };

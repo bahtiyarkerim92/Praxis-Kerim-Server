@@ -25,7 +25,9 @@ const sesClient = new SESClient({
 async function sendValidationEmail(email, token, locale) {
   // Use patient app URL for email validation instead of marketing website
   const patientAppDomain =
-    process.env.PATIENT_APP_DOMAIN || "http://localhost:5173";
+    process.env.PATIENT_URL ||
+    process.env.PATIENT_APP_DOMAIN ||
+    "http://localhost:5173";
   const validationUrl = `${patientAppDomain}/validate-email?token=${token}`;
   const fromEmail = process.env.AWS_SES_FROM_EMAIL || "info@telemediker.com";
 

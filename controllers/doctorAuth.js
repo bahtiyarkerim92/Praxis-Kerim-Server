@@ -43,12 +43,6 @@ const doctorRegisterValidation = [
   body("specialties")
     .isArray({ min: 1 })
     .withMessage("At least one specialty is required"),
-  body("plansOffered")
-    .isArray({ min: 1 })
-    .withMessage("At least one plan is required"),
-  body("plansOffered.*")
-    .isIn(["basic", "standard", "premium", "consultation", "follow-up"])
-    .withMessage("Invalid plan type"),
   body("bio").optional().trim(),
   body("photoUrl").optional().trim(),
   body("isAdmin").optional().isBoolean(),
@@ -114,7 +108,6 @@ doctorAuthController.post(
         email,
         password,
         specialties,
-        plansOffered,
         bio = "",
         photoUrl = "",
         isAdmin = false,
@@ -137,7 +130,6 @@ doctorAuthController.post(
         email: email.toLowerCase(),
         password: hashedPassword,
         specialties,
-        plansOffered,
         bio,
         photoUrl,
         isAdmin,

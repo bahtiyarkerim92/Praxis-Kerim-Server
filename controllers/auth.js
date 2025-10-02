@@ -467,6 +467,7 @@ authController.post(
 
       // Ensure reset password URLs point to the patient app
       const patientAppDomain =
+        process.env.PATIENT_URL ||
         process.env.PATIENT_APP_DOMAIN ||
         (process.env.NODE_ENV === "development"
           ? "http://localhost:5173"
