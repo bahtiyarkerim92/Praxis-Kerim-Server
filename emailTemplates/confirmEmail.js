@@ -96,7 +96,7 @@ async function getConfirmEmailTemplate(validationUrl, locale) {
                                                                     <span class="es-button-border"
                                                                         style="border-style:solid;border-color:#2CB543;background:#f06706;border-width:0px;display:inline-block;border-radius:8px;width:auto"><a
                                                                             href="${validationUrl}"
-                                                                            target="_blank" class="es-button"
+                                                                            class="es-button"
                                                                             style="mso-style-priority:100 !important;text-decoration:none !important;mso-line-height-rule:exactly;color:#FFFFFF;font-size:20px;padding:10px 30px 10px 30px;display:inline-block;background:#f06706;border-radius:8px;font-family:arial, 'helvetica neue', helvetica, sans-serif;font-weight:normal;font-style:normal;line-height:24px;width:auto;text-align:center;letter-spacing:0;mso-padding-alt:0;mso-border-alt:10px solid #f06706;padding-left:30px;padding-right:30px">${i18n.t(
                                                                               "email.confirmEmail.buttonText"
                                                                             )}</a></span></td>
@@ -116,8 +116,8 @@ async function getConfirmEmailTemplate(validationUrl, locale) {
                                                                         ${i18n.t(
                                                                           "email.emailFooter.regards"
                                                                         )}<br>   ${i18n.t(
-      "email.emailFooter.team"
-    )}</p>
+                                                                          "email.emailFooter.team"
+                                                                        )}</p>
                                                                 </td>
                                                             </tr>
                                                         </table>
