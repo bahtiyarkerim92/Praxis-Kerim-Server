@@ -681,7 +681,9 @@ authController.get("/profile", authenticateToken, async (req, res) => {
 
     // Create response object with individual address fields for editing
     const profileData = {
-      fullName: `${user.firstName} ${user.lastName}`,
+      firstName: user.firstName || "",
+      lastName: user.lastName || "",
+      fullName: `${user.firstName || ""} ${user.lastName || ""}`.trim(),
       email: user.email,
       gender: user.gender,
       birthday: user.birthday,
@@ -725,6 +727,8 @@ authController.put("/profile", authenticateToken, async (req, res) => {
     }
 
     const {
+      firstName,
+      lastName,
       gender,
       birthDate,
       address,
@@ -739,6 +743,8 @@ authController.put("/profile", authenticateToken, async (req, res) => {
     // Update user data (allow partial updates)
     const updateData = {};
 
+    if (firstName !== undefined) updateData.firstName = firstName;
+    if (lastName !== undefined) updateData.lastName = lastName;
     if (gender) updateData.gender = gender;
     if (birthDate) updateData.birthday = new Date(birthDate);
     if (nationalIdNumber !== undefined)
@@ -810,6 +816,8 @@ authController.put("/complete-profile", authenticateToken, async (req, res) => {
     }
 
     const {
+      firstName,
+      lastName,
       gender,
       birthDate,
       address,
@@ -823,6 +831,8 @@ authController.put("/complete-profile", authenticateToken, async (req, res) => {
     } = req.body;
 
     // Update user with additional profile data
+    if (firstName) user.firstName = firstName;
+    if (lastName) user.lastName = lastName;
     user.gender = gender;
     user.birthday = birthDate ? new Date(birthDate) : undefined;
 
