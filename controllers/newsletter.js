@@ -1,18 +1,18 @@
 const newsletterController = require("express").Router();
 const Newsletter = require("../models/Newsletter");
-const { authenticateToken } = require("../middleware/auth");
+const { authenticateDoctorToken } = require("../middleware/doctorAuth");
 const Doctor = require("../models/Doctor");
 
 // Middleware to check if user is admin
 const requireAdmin = async (req, res, next) => {
   try {
     // Check if user is a doctor/admin
-    const doctor = await Doctor.findOne({ email: req.user.email });
-    
+    const doctor = await Doctor.findOne({ email: req.doctor.email });
+
     if (!doctor || !doctor.isAdmin) {
       return res.status(403).json({ message: "Admin access required" });
     }
-    
+
     next();
   } catch (error) {
     console.error("Admin check error:", error);
@@ -23,7 +23,7 @@ const requireAdmin = async (req, res, next) => {
 // GET /api/newsletter/subscribers - Get all newsletter subscribers (Admin only)
 newsletterController.get(
   "/subscribers",
-  authenticateToken,
+  authenticateDoctorToken,
   requireAdmin,
   async (req, res) => {
     try {
@@ -78,7 +78,7 @@ newsletterController.get(
 // GET /api/newsletter/stats - Get newsletter statistics (Admin only)
 newsletterController.get(
   "/stats",
-  authenticateToken,
+  authenticateDoctorToken,
   requireAdmin,
   async (req, res) => {
     try {
@@ -120,7 +120,7 @@ newsletterController.get(
 // POST /api/newsletter/unsubscribe/:id - Unsubscribe a user (Admin only)
 newsletterController.post(
   "/unsubscribe/:id",
-  authenticateToken,
+  authenticateDoctorToken,
   requireAdmin,
   async (req, res) => {
     try {
@@ -148,7 +148,7 @@ newsletterController.post(
 // DELETE /api/newsletter/:id - Delete a subscriber (Admin only)
 newsletterController.delete(
   "/:id",
-  authenticateToken,
+  authenticateDoctorToken,
   requireAdmin,
   async (req, res) => {
     try {
@@ -169,4 +169,3 @@ newsletterController.delete(
 );
 
 module.exports = newsletterController;
-
