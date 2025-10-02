@@ -27,7 +27,7 @@ async function sendValidationEmail(email, token, locale) {
   let patientAppDomain =
     process.env.PATIENT_URL ||
     process.env.PATIENT_APP_DOMAIN ||
-    "http://localhost:5173";
+    "http://localhost:5174"; // Patient app runs on 5174 in development
 
   // Remove trailing slash if present to avoid double slashes
   patientAppDomain = patientAppDomain.replace(/\/$/, "");

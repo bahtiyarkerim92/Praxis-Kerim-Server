@@ -1,8 +1,8 @@
-const { check } = require("express-validator");
+const { query } = require("express-validator");
 const { handleValidation } = require("../utils/validation");
 
 const validateEmailValidationRequest = [
-  check("token")
+  query("token")
     .trim()
     .not()
     .isEmpty()

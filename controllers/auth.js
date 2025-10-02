@@ -289,66 +289,107 @@ authController.post(
   }
 );
 
-authController.post(
-  "/validate-email",
-  validateEmailValidationRequest,
-  handleEmailValidation,
-  async (req, res) => {
-    const { token, locale } = req.query;
-    if (!token) {
-      return res.status(400).send("Token is required");
-    }
-    try {
-      const decoded = jwt.verify(token, process.env.EMAIL_TOKEN_SECRET);
-      const user = await User.findById(decoded.userId);
-      if (!user) {
-        return res.status(400).send("Invalid token");
-      }
+authController.post("/validate-email", async (req, res) => {
+  const { token, locale } = req.query;
 
-      // Check if email is already validated
-      if (user.isEmailValidated) {
-        return res.status(200).json({
-          message: "Email is already validated.",
-          isEmailValidated: true,
-        });
-      }
+  console.log("📧 Email validation request received");
+  console.log("   Token:", token ? "Present" : "Missing");
 
-      user.isEmailValidated = true;
-      await user.save();
-
-      const refreshToken = generateRefreshToken(user);
-
-      user.refreshToken = refreshToken;
-      await user.save();
-      setRefreshTokenCookie(res, refreshToken);
-      await sendRegistrationCompletedEmail(user.email, locale);
-      res.status(200).json({ message: "Email validated successfully." });
-    } catch (error) {
-      // Check if the error is a JWT verification error
-      if (
-        error.name === "JsonWebTokenError" ||
-        error.name === "TokenExpiredError"
-      ) {
-        // Try to find user with validated email
-        try {
-          const decoded = jwt.decode(token);
-          if (decoded && decoded.userId) {
-            const user = await User.findById(decoded.userId);
-            if (user && user.isEmailValidated) {
-              return res.status(200).json({
-                message: "Email is already validated.",
-                isEmailValidated: true,
-              });
-            }
-          }
-        } catch (innerError) {
-          console.error("Error checking user validation status:", innerError);
-        }
-      }
-      res.status(400).send("Invalid or expired token.");
-    }
+  if (!token) {
+    return res.status(400).json({
+      message: "Token is required",
+      error: "MISSING_TOKEN",
+    });
   }
-);
+  try {
+    console.log("🔐 Verifying JWT token...");
+    const decoded = jwt.verify(token, process.env.EMAIL_TOKEN_SECRET);
+    console.log("✅ Token verified, user ID:", decoded.userId);
+
+    const user = await User.findById(decoded.userId);
+    if (!user) {
+      console.log("❌ User not found for ID:", decoded.userId);
+      return res.status(400).json({
+        message: "Invalid token - user not found",
+        error: "USER_NOT_FOUND",
+      });
+    }
+
+    console.log(
+      "👤 User found:",
+      user.email,
+      "Validated:",
+      user.isEmailValidated
+    );
+
+    // Check if email is already validated
+    if (user.isEmailValidated) {
+      console.log("✅ Email already validated");
+      return res.status(200).json({
+        message: "Email is already validated.",
+        isEmailValidated: true,
+      });
+    }
+
+    console.log("🔄 Marking email as validated...");
+    user.isEmailValidated = true;
+    await user.save();
+
+    console.log("🍪 Generating refresh token...");
+    const refreshToken = generateRefreshToken(user);
+    user.refreshToken = refreshToken;
+    await user.save();
+    setRefreshTokenCookie(res, refreshToken);
+
+    // Registration completed email (optional - disabled for now)
+    // console.log('📧 Sending registration completed email...');
+    // try {
+    //   await sendRegistrationCompletedEmail(user.email, locale);
+    // } catch (emailError) {
+    //   console.warn('⚠️ Failed to send registration completed email:', emailError.message);
+    // }
+
+    console.log("✅ Email validated successfully");
+    res.status(200).json({
+      message: "Email validated successfully.",
+      success: true,
+    });
+  } catch (error) {
+    console.error("❌ Email validation error:", error);
+
+    // Check if the error is a JWT verification error
+    if (
+      error.name === "JsonWebTokenError" ||
+      error.name === "TokenExpiredError"
+    ) {
+      console.log("🔍 Token invalid/expired, checking if already validated...");
+      // Try to find user with validated email
+      try {
+        const decoded = jwt.decode(token);
+        if (decoded && decoded.userId) {
+          const user = await User.findById(decoded.userId);
+          if (user && user.isEmailValidated) {
+            console.log("✅ Token expired but email already validated");
+            return res.status(200).json({
+              message: "Email is already validated.",
+              isEmailValidated: true,
+            });
+          }
+        }
+      } catch (innerError) {
+        console.error("Error checking user validation status:", innerError);
+      }
+    }
+
+    res.status(400).json({
+      message:
+        error.name === "TokenExpiredError"
+          ? "Validation token has expired. Please request a new one."
+          : "Invalid or expired token.",
+      error: error.name || "VALIDATION_ERROR",
+    });
+  }
+});
 
 authController.post(
   "/resend-validation-email",
@@ -368,7 +409,11 @@ authController.post(
         return res.status(404).json({ message: "User not found" });
       }
       if (user.isEmailValidated) {
-        return res.status(400).json({ message: "Email is already validated." });
+        return res.status(200).json({
+          message:
+            "Email is already validated. You can log in to your account.",
+          isEmailValidated: true,
+        });
       }
 
       // Check if there is a recent token that is still valid
@@ -470,7 +515,7 @@ authController.post(
         process.env.PATIENT_URL ||
         process.env.PATIENT_APP_DOMAIN ||
         (process.env.NODE_ENV === "development"
-          ? "http://localhost:5173"
+          ? "http://localhost:5174" // Patient app runs on 5174 in development
           : process.env.FRONTEND_DOMAIN);
 
       const resetUrl = `${patientAppDomain}/reset-password?token=${resetToken}`;
