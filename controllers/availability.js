@@ -2,6 +2,7 @@ const express = require("express");
 const { body, param, query, validationResult } = require("express-validator");
 const {
   authenticateDoctorToken,
+  requireDoctorRole,
   optionalDoctorAuth,
 } = require("../middleware/doctorAuth");
 const { authenticateToken } = require("../middleware/auth");
@@ -61,46 +62,51 @@ const availabilityValidationRules = [
 // --- Routes ---
 
 // GET /api/availability/doctor - Get doctor's own availability (authenticated, no filtering)
-router.get("/doctor", authenticateDoctorToken, async (req, res) => {
-  try {
-    const { date, startDate, endDate } = req.query;
-    const filter = { doctorId: req.doctor._id };
+router.get(
+  "/doctor",
+  authenticateDoctorToken,
+  requireDoctorRole,
+  async (req, res) => {
+    try {
+      const { date, startDate, endDate } = req.query;
+      const filter = { doctorId: req.doctor._id };
 
-    if (date) {
-      // Parse date as UTC to avoid timezone shifts
-      const targetDateUTC = new Date(date + "T00:00:00.000Z");
-      const nextDayUTC = new Date(targetDateUTC);
-      nextDayUTC.setUTCDate(nextDayUTC.getUTCDate() + 1);
+      if (date) {
+        // Parse date as UTC to avoid timezone shifts
+        const targetDateUTC = new Date(date + "T00:00:00.000Z");
+        const nextDayUTC = new Date(targetDateUTC);
+        nextDayUTC.setUTCDate(nextDayUTC.getUTCDate() + 1);
 
-      filter.date = {
-        $gte: targetDateUTC,
-        $lt: nextDayUTC,
-      };
-    } else if (startDate && endDate) {
-      filter.date = {
-        $gte: new Date(startDate + "T00:00:00.000Z"),
-        $lte: new Date(endDate + "T23:59:59.999Z"),
-      };
+        filter.date = {
+          $gte: targetDateUTC,
+          $lt: nextDayUTC,
+        };
+      } else if (startDate && endDate) {
+        filter.date = {
+          $gte: new Date(startDate + "T00:00:00.000Z"),
+          $lte: new Date(endDate + "T23:59:59.999Z"),
+        };
+      }
+      // No default date filtering for doctors - they should see all their availability
+
+      const availability = await Availability.find(filter)
+        .populate("doctorId", "name email specialties")
+        .sort({ date: 1 });
+
+      res.json({
+        success: true,
+        data: availability,
+        count: availability.length,
+      });
+    } catch (error) {
+      console.error("Error fetching doctor availability:", error);
+      res.status(500).json({
+        message: "Error fetching availability",
+        error: error.message,
+      });
     }
-    // No default date filtering for doctors - they should see all their availability
-
-    const availability = await Availability.find(filter)
-      .populate("doctorId", "name email specialties")
-      .sort({ date: 1 });
-
-    res.json({
-      success: true,
-      data: availability,
-      count: availability.length,
-    });
-  } catch (error) {
-    console.error("Error fetching doctor availability:", error);
-    res.status(500).json({
-      message: "Error fetching availability",
-      error: error.message,
-    });
   }
-});
+);
 
 // GET /api/availability - Get availability (public endpoint for patients)
 router.get("/", async (req, res) => {
@@ -227,6 +233,7 @@ router.get(
 router.post(
   "/",
   authenticateDoctorToken,
+  requireDoctorRole,
   availabilityValidationRules,
   handleValidationErrors,
   async (req, res) => {
@@ -278,6 +285,7 @@ router.post(
 router.put(
   "/:id",
   authenticateDoctorToken,
+  requireDoctorRole,
   [
     param("id").isMongoId().withMessage("Invalid availability ID"),
     body("slots")
@@ -353,6 +361,7 @@ router.put(
 router.delete(
   "/:id",
   authenticateDoctorToken,
+  requireDoctorRole,
   [param("id").isMongoId().withMessage("Invalid availability ID")],
   handleValidationErrors,
   async (req, res) => {

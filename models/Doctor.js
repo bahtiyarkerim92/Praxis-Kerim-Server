@@ -61,6 +61,10 @@ const doctorSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    isDoctor: {
+      type: Boolean,
+      default: true, // Default to doctor role
+    },
     isAdmin: {
       type: Boolean,
       default: false,

@@ -45,6 +45,7 @@ const doctorRegisterValidation = [
     .withMessage("At least one specialty is required"),
   body("bio").optional().trim(),
   body("photoUrl").optional().trim(),
+  body("isDoctor").optional().isBoolean(),
   body("isAdmin").optional().isBoolean(),
 ];
 
@@ -63,6 +64,7 @@ const generateDoctorAccessToken = (doctor) => {
     {
       userId: doctor._id,
       email: doctor.email,
+      isDoctor: doctor.isDoctor,
       isAdmin: doctor.isAdmin,
       userType: "doctor",
     },
@@ -110,6 +112,7 @@ doctorAuthController.post(
         specialties,
         bio = "",
         photoUrl = "",
+        isDoctor = true,
         isAdmin = false,
       } = req.body;
 
@@ -132,6 +135,7 @@ doctorAuthController.post(
         specialties,
         bio,
         photoUrl,
+        isDoctor,
         isAdmin,
       });
 

@@ -3,6 +3,7 @@ const jwt = require("jsonwebtoken");
 const { body, param, query, validationResult } = require("express-validator");
 const {
   authenticateDoctorToken,
+  requireDoctorRole,
   optionalDoctorAuth,
 } = require("../middleware/doctorAuth");
 const { authenticateToken } = require("../middleware/auth");
@@ -163,120 +164,126 @@ const appointmentValidationRules = [
 // --- Routes ---
 
 // GET /api/appointments/doctor - Get appointments for doctors (MUST BE FIRST!)
-router.get("/doctor", authenticateDoctorToken, async (req, res) => {
-  try {
-    const {
-      status,
-      patientId,
-      date,
-      startDate,
-      endDate,
-      limit = 50,
-      page = 1,
-    } = req.query;
+router.get(
+  "/doctor",
+  authenticateDoctorToken,
+  requireDoctorRole,
+  async (req, res) => {
+    try {
+      const {
+        status,
+        patientId,
+        date,
+        startDate,
+        endDate,
+        limit = 50,
+        page = 1,
+      } = req.query;
 
-    const filter = {
-      doctorId: req.doctor._id, // Only show this doctor's appointments
-    };
-
-    // Status filter
-    if (status) {
-      filter.status = status;
-    }
-
-    // Patient filter
-    if (patientId) {
-      filter.patientId = patientId;
-    }
-
-    // Date filters - ensure UTC handling
-    if (date) {
-      // Parse date as UTC to avoid timezone shifts
-      const targetDateUTC = new Date(date + "T00:00:00.000Z");
-      const nextDayUTC = new Date(targetDateUTC);
-      nextDayUTC.setUTCDate(nextDayUTC.getUTCDate() + 1);
-
-      filter.date = {
-        $gte: targetDateUTC,
-        $lt: nextDayUTC,
+      const filter = {
+        doctorId: req.doctor._id, // Only show this doctor's appointments
       };
-    } else if (startDate && endDate) {
-      filter.date = {
-        $gte: new Date(startDate + "T00:00:00.000Z"),
-        $lte: new Date(endDate + "T23:59:59.999Z"),
-      };
-    }
 
-    const skip = (parseInt(page) - 1) * parseInt(limit);
-
-    const appointments = await Appointment.find(filter)
-      .populate("doctorId", "name email specialties")
-      .populate("patientId", "firstName lastName email")
-      .sort({ date: 1, slot: 1 })
-      .limit(parseInt(limit))
-      .skip(skip);
-
-    // Add joinable status and auto-complete logic for consultation appointments
-    const appointmentsWithJoinable = appointments.map(async (appointment) => {
-      const appointmentObj = appointment.toObject();
-
-      // Auto-complete if needed
-      if (shouldAutoComplete(appointmentObj)) {
-        appointment.status = "completed";
-        appointment.completedAt = new Date();
-        await appointment.save();
-        appointmentObj.status = "completed";
-        appointmentObj.completedAt = appointment.completedAt;
+      // Status filter
+      if (status) {
+        filter.status = status;
       }
 
-      if (appointmentObj.plan === "consultation") {
-        appointmentObj.isJoinable = isJoinable(appointmentObj);
-        appointmentObj.minutesUntilJoinable =
-          getMinutesUntilJoinable(appointmentObj);
-        appointmentObj.hasPassed = hasAppointmentPassed(appointmentObj);
+      // Patient filter
+      if (patientId) {
+        filter.patientId = patientId;
       }
-      return appointmentObj;
-    });
 
-    const resolvedAppointments = await Promise.all(appointmentsWithJoinable);
-    const total = await Appointment.countDocuments(filter);
+      // Date filters - ensure UTC handling
+      if (date) {
+        // Parse date as UTC to avoid timezone shifts
+        const targetDateUTC = new Date(date + "T00:00:00.000Z");
+        const nextDayUTC = new Date(targetDateUTC);
+        nextDayUTC.setUTCDate(nextDayUTC.getUTCDate() + 1);
 
-    // Debug: Log all appointments being sent to doctor
-    console.log(
-      `📋 Sending ${resolvedAppointments.length} appointments to doctor:`,
-      resolvedAppointments.map((apt) => ({
-        id: apt._id,
-        date: apt.date,
-        slot: apt.slot,
-        status: apt.status,
-        isJoinable: apt.isJoinable,
-        minutesUntilJoinable: apt.minutesUntilJoinable,
-      }))
-    );
+        filter.date = {
+          $gte: targetDateUTC,
+          $lt: nextDayUTC,
+        };
+      } else if (startDate && endDate) {
+        filter.date = {
+          $gte: new Date(startDate + "T00:00:00.000Z"),
+          $lte: new Date(endDate + "T23:59:59.999Z"),
+        };
+      }
 
-    res.json({
-      success: true,
-      data: resolvedAppointments,
-      pagination: {
-        total,
-        page: parseInt(page),
-        limit: parseInt(limit),
-        pages: Math.ceil(total / parseInt(limit)),
-      },
-    });
-  } catch (error) {
-    console.error("Error fetching doctor appointments:", error);
-    res.status(500).json({
-      message: "Error fetching appointments",
-      error: error.message,
-    });
+      const skip = (parseInt(page) - 1) * parseInt(limit);
+
+      const appointments = await Appointment.find(filter)
+        .populate("doctorId", "name email specialties")
+        .populate("patientId", "firstName lastName email")
+        .sort({ date: 1, slot: 1 })
+        .limit(parseInt(limit))
+        .skip(skip);
+
+      // Add joinable status and auto-complete logic for consultation appointments
+      const appointmentsWithJoinable = appointments.map(async (appointment) => {
+        const appointmentObj = appointment.toObject();
+
+        // Auto-complete if needed
+        if (shouldAutoComplete(appointmentObj)) {
+          appointment.status = "completed";
+          appointment.completedAt = new Date();
+          await appointment.save();
+          appointmentObj.status = "completed";
+          appointmentObj.completedAt = appointment.completedAt;
+        }
+
+        if (appointmentObj.plan === "consultation") {
+          appointmentObj.isJoinable = isJoinable(appointmentObj);
+          appointmentObj.minutesUntilJoinable =
+            getMinutesUntilJoinable(appointmentObj);
+          appointmentObj.hasPassed = hasAppointmentPassed(appointmentObj);
+        }
+        return appointmentObj;
+      });
+
+      const resolvedAppointments = await Promise.all(appointmentsWithJoinable);
+      const total = await Appointment.countDocuments(filter);
+
+      // Debug: Log all appointments being sent to doctor
+      console.log(
+        `📋 Sending ${resolvedAppointments.length} appointments to doctor:`,
+        resolvedAppointments.map((apt) => ({
+          id: apt._id,
+          date: apt.date,
+          slot: apt.slot,
+          status: apt.status,
+          isJoinable: apt.isJoinable,
+          minutesUntilJoinable: apt.minutesUntilJoinable,
+        }))
+      );
+
+      res.json({
+        success: true,
+        data: resolvedAppointments,
+        pagination: {
+          total,
+          page: parseInt(page),
+          limit: parseInt(limit),
+          pages: Math.ceil(total / parseInt(limit)),
+        },
+      });
+    } catch (error) {
+      console.error("Error fetching doctor appointments:", error);
+      res.status(500).json({
+        message: "Error fetching appointments",
+        error: error.message,
+      });
+    }
   }
-});
+);
 
 // GET /api/appointments/doctor/:id - Get single appointment for doctors
 router.get(
   "/doctor/:id",
   authenticateDoctorToken,
+  requireDoctorRole,
   [param("id").isMongoId().withMessage("Invalid appointment ID")],
   handleValidationErrors,
   async (req, res) => {
@@ -1329,10 +1336,8 @@ router.post(
 
       // Manual validation check (instead of relying on virtual)
       const now = new Date();
-      const isCouponValid = 
-        coupon.status === "active" && 
-        coupon.expiresAt > now && 
-        !coupon.usedBy;
+      const isCouponValid =
+        coupon.status === "active" && coupon.expiresAt > now && !coupon.usedBy;
 
       console.log("🔍 Coupon validation details:", {
         statusCheck: coupon.status === "active",

@@ -18,12 +18,19 @@ const createCoupon = async (req, res) => {
       });
     }
 
-    // Verify user is a doctor
+    // Verify user is a doctor or admin
     const doctor = await Doctor.findById(doctorId);
     if (!doctor) {
       return res.status(403).json({
         success: false,
-        message: "Only doctors can create coupons",
+        message: "User not found",
+      });
+    }
+
+    if (!doctor.isDoctor && !doctor.isAdmin) {
+      return res.status(403).json({
+        success: false,
+        message: "Only doctors and admins can create coupons.",
       });
     }
 

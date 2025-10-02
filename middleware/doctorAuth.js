@@ -21,6 +21,7 @@ const generateDoctorAccessToken = (doctor) => {
     {
       userId: doctor._id,
       email: doctor.email,
+      isDoctor: doctor.isDoctor,
       isAdmin: doctor.isAdmin,
       userType: "doctor",
     },
@@ -252,6 +253,17 @@ const requireDoctorAdmin = (req, res, next) => {
   next();
 };
 
+// Middleware to require doctor role (not just admin)
+const requireDoctorRole = (req, res, next) => {
+  if (!req.doctor || !req.doctor.isDoctor) {
+    return res.status(403).json({
+      message:
+        "Doctor role required. This action is not available for admin-only accounts.",
+    });
+  }
+  next();
+};
+
 // Optional authentication middleware (doesn't reject if no token)
 const optionalDoctorAuth = async (req, res, next) => {
   try {
@@ -288,5 +300,6 @@ const optionalDoctorAuth = async (req, res, next) => {
 module.exports = {
   authenticateDoctorToken,
   requireDoctorAdmin,
+  requireDoctorRole,
   optionalDoctorAuth,
 };
