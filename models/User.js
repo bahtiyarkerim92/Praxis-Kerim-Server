@@ -77,6 +77,13 @@ const userSchema = new mongoose.Schema({
   termsAccepted: {
     type: Boolean,
   },
+  privacyAccepted: {
+    type: Boolean,
+  },
+  newsletterSubscribed: {
+    type: Boolean,
+    default: false,
+  },
   createdAt: {
     type: Date,
     default: Date.now,

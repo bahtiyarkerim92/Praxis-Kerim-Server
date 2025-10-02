@@ -17,6 +17,7 @@ const auditRoutes = require("../src/routes/auditLog");
 const dailyWebhookRoutes = require("../src/routes/webhooks/daily");
 const ratingsRoutes = require("../src/routes/ratings");
 const couponsRoutes = require("../src/routes/coupons");
+const newsletterController = require("../controllers/newsletter");
 
 module.exports = (app) => {
   app.get("/", (req, res) => {
@@ -75,4 +76,7 @@ module.exports = (app) => {
 
   // --- Coupon Routes ---
   app.use("/api/coupons", couponsRoutes);
+
+  // --- Newsletter Routes ---
+  app.use("/api/newsletter", newsletterController);
 };

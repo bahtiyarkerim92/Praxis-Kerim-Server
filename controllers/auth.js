@@ -1,6 +1,7 @@
 require("dotenv").config();
 const authController = require("express").Router();
 const User = require("../models/User");
+const Newsletter = require("../models/Newsletter");
 const crypto = require("crypto");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
@@ -80,6 +81,8 @@ authController.post(
         nationalIdNumber,
         ipCountry,
         termsAccepted,
+        privacyAccepted,
+        newsletterSubscribed,
       } = req.body;
 
       // Check for existing user
@@ -112,6 +115,8 @@ authController.post(
         nationalIdNumber: country === "BG" ? nationalIdNumber : undefined,
         insurance: country === "DE" ? insurance : undefined,
         termsAccepted,
+        privacyAccepted,
+        newsletterSubscribed: newsletterSubscribed || false,
         ipCountry,
         emailTokenIssuedAt: new Date(),
       });
@@ -119,6 +124,28 @@ authController.post(
       console.log("Creating user with data:", user);
 
       await user.save();
+
+      // Create newsletter subscription if user opted in
+      if (newsletterSubscribed) {
+        try {
+          const newsletter = new Newsletter({
+            email: user.email,
+            userId: user._id,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            source: "registration",
+            isActive: true,
+          });
+          await newsletter.save();
+          console.log("✅ Newsletter subscription created");
+        } catch (newsletterError) {
+          console.warn(
+            "⚠️ Failed to create newsletter subscription:",
+            newsletterError.message
+          );
+          // Don't fail registration if newsletter creation fails
+        }
+      }
 
       // Try to send validation email, but don't fail registration if it fails
       try {
