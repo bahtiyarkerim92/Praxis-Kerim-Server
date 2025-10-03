@@ -19,6 +19,7 @@ const ratingsRoutes = require("../src/routes/ratings");
 const couponsRoutes = require("../src/routes/coupons");
 const newsletterController = require("../controllers/newsletter");
 const analyticsController = require("../controllers/analytics");
+const patientsController = require("../controllers/patients");
 
 module.exports = (app) => {
   app.get("/", (req, res) => {
@@ -31,6 +32,7 @@ module.exports = (app) => {
 
   // --- API Routes ---
   app.use("/api/doctors", doctorsController);
+  app.use("/api/patients", patientsController);
   app.use("/api/availability", availabilityController);
   app.use("/api/appointments", appointmentsController);
   app.use("/api/payments", paymentsController);
