@@ -8,6 +8,7 @@
         "dev": "nodemon index.js",
         "seed": "node scripts/seedDoctors.js",
         "seed:admin": "node scripts/createAdminDoctor.js",
+        "reset:db": "node scripts/resetDatabase.js",
         "test": "echo \"Error: no test specified\" && exit 1"
     },
     "keywords": [],
