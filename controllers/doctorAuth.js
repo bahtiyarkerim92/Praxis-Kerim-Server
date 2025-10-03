@@ -251,6 +251,55 @@ doctorAuthController.get("/me", async (req, res) => {
   }
 });
 
+// POST /api/doctor-auth/refresh - Refresh access token
+doctorAuthController.post("/refresh", async (req, res) => {
+  try {
+    const refreshToken = req.cookies.refreshToken;
+
+    if (!refreshToken) {
+      return res.status(401).json({ message: "No refresh token provided" });
+    }
+
+    // Verify refresh token
+    const decoded = jwt.verify(
+      refreshToken,
+      process.env.DOCTOR_JWT_SECRET || process.env.REFRESH_TOKEN_SECRET
+    );
+
+    // Find doctor and validate refresh token
+    const doctor = await Doctor.findById(decoded.userId);
+    if (!doctor) {
+      return res.status(401).json({ message: "Doctor not found" });
+    }
+
+    // Check if refresh token is in doctor's valid tokens
+    const tokenRecord = doctor.refreshTokens.find(
+      (t) => t.jti === decoded.jti && !t.invalidated
+    );
+
+    if (!tokenRecord) {
+      return res.status(401).json({ message: "Invalid refresh token" });
+    }
+
+    // Generate new access token
+    const accessToken = generateDoctorAccessToken(doctor);
+
+    // Remove sensitive data
+    const doctorResponse = doctor.toObject();
+    delete doctorResponse.password;
+    delete doctorResponse.refreshTokens;
+
+    res.json({
+      success: true,
+      accessToken,
+      doctor: doctorResponse,
+    });
+  } catch (error) {
+    console.error("Token refresh error:", error);
+    res.status(401).json({ message: "Invalid or expired refresh token" });
+  }
+});
+
 // POST /api/doctor-auth/logout - Doctor logout
 doctorAuthController.post("/logout", async (req, res) => {
   console.log(

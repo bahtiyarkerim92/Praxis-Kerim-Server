@@ -18,6 +18,7 @@ const dailyWebhookRoutes = require("../src/routes/webhooks/daily");
 const ratingsRoutes = require("../src/routes/ratings");
 const couponsRoutes = require("../src/routes/coupons");
 const newsletterController = require("../controllers/newsletter");
+const analyticsController = require("../controllers/analytics");
 
 module.exports = (app) => {
   app.get("/", (req, res) => {
@@ -79,4 +80,7 @@ module.exports = (app) => {
 
   // --- Newsletter Routes ---
   app.use("/api/newsletter", newsletterController);
+
+  // --- Analytics Routes ---
+  app.use("/api/analytics", analyticsController);
 };
