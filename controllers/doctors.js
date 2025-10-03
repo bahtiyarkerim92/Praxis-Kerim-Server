@@ -70,6 +70,10 @@ const doctorValidationRules = [
     .optional()
     .isBoolean()
     .withMessage("isAdmin must be a boolean"),
+  body("isDoctor")
+    .optional()
+    .isBoolean()
+    .withMessage("isDoctor must be a boolean"),
 ];
 
 const updateDoctorValidationRules = [
@@ -106,6 +110,14 @@ const updateDoctorValidationRules = [
     .optional()
     .isBoolean()
     .withMessage("isActive must be a boolean"),
+  body("isAdmin")
+    .optional()
+    .isBoolean()
+    .withMessage("isAdmin must be a boolean"),
+  body("isDoctor")
+    .optional()
+    .isBoolean()
+    .withMessage("isDoctor must be a boolean"),
 ];
 
 // --- Routes ---
@@ -195,6 +207,7 @@ router.post(
         photoUrl,
         experience,
         isAdmin = false,
+        isDoctor = true,
       } = req.body;
 
       // Check if doctor with this email already exists
@@ -217,6 +230,7 @@ router.post(
         photoUrl,
         experience,
         isAdmin,
+        isDoctor,
       });
 
       await doctor.save();
