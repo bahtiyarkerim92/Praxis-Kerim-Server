@@ -136,9 +136,15 @@ router.get("/", optionalDoctorAuth, async (req, res) => {
       filter.isActive = true;
     }
 
-    // Only show users with isDoctor role (hide admin-only accounts from patient side)
-    filter.isDoctor = true;
-
+    // For doctor dashboard: show all users (doctors and admins)
+    // For patient side: only show doctors
+    if (req.user && (req.user.isDoctor || req.user.isAdmin)) {
+      // Doctor dashboard - show all users
+      filter.$or = [{ isDoctor: true }, { isAdmin: true }];
+    } else {
+      // Patient side - only show doctors
+      filter.isDoctor = true;
+    }
     const doctors = await Doctor.find(filter)
       .select("-password -refreshTokens")
       .sort({ name: 1 });

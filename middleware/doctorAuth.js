@@ -281,6 +281,7 @@ const optionalDoctorAuth = async (req, res, next) => {
           const doctor = await Doctor.findById(payload.userId);
           if (doctor && doctor.isActive) {
             req.doctor = doctor;
+            req.user = doctor; // Also set req.user for compatibility
             req.isAuthenticated = true;
           }
         }
