@@ -74,6 +74,24 @@ const doctorValidationRules = [
     .optional()
     .isBoolean()
     .withMessage("isDoctor must be a boolean"),
+  body("countriesOfOperation")
+    .optional()
+    .isArray()
+    .withMessage("Countries of operation must be an array"),
+  body("countriesOfOperation.*")
+    .optional()
+    .trim()
+    .isLength({ min: 2, max: 100 })
+    .withMessage("Each country must be between 2 and 100 characters"),
+  body("languages")
+    .optional()
+    .isArray()
+    .withMessage("Languages must be an array"),
+  body("languages.*")
+    .optional()
+    .trim()
+    .isLength({ min: 2, max: 50 })
+    .withMessage("Each language must be between 2 and 50 characters"),
 ];
 
 const updateDoctorValidationRules = [
@@ -118,6 +136,24 @@ const updateDoctorValidationRules = [
     .optional()
     .isBoolean()
     .withMessage("isDoctor must be a boolean"),
+  body("countriesOfOperation")
+    .optional()
+    .isArray()
+    .withMessage("Countries of operation must be an array"),
+  body("countriesOfOperation.*")
+    .optional()
+    .trim()
+    .isLength({ min: 2, max: 100 })
+    .withMessage("Each country must be between 2 and 100 characters"),
+  body("languages")
+    .optional()
+    .isArray()
+    .withMessage("Languages must be an array"),
+  body("languages.*")
+    .optional()
+    .trim()
+    .isLength({ min: 2, max: 50 })
+    .withMessage("Each language must be between 2 and 50 characters"),
 ];
 
 // --- Routes ---
@@ -214,6 +250,8 @@ router.post(
         experience,
         isAdmin = false,
         isDoctor = true,
+        countriesOfOperation = [],
+        languages = [],
       } = req.body;
 
       // Check if doctor with this email already exists
@@ -237,6 +275,8 @@ router.post(
         experience,
         isAdmin,
         isDoctor,
+        countriesOfOperation,
+        languages,
       });
 
       await doctor.save();
@@ -288,15 +328,31 @@ router.put(
       .optional()
       .isArray()
       .withMessage("Specialties must be an array"),
+    body("countriesOfOperation")
+      .optional()
+      .isArray()
+      .withMessage("Countries of operation must be an array"),
+    body("languages")
+      .optional()
+      .isArray()
+      .withMessage("Languages must be an array"),
   ],
   handleValidationErrors,
   async (req, res) => {
     try {
-      const { name, bio, photoUrl, experience, specialties } = req.body;
+      const { name, bio, photoUrl, experience, specialties, countriesOfOperation, languages } = req.body;
 
       // Validate and clean data
       const cleanSpecialties = specialties
         ? specialties.filter((s) => s && s.trim())
+        : undefined;
+      
+      const cleanCountries = countriesOfOperation
+        ? countriesOfOperation.filter((c) => c && c.trim())
+        : undefined;
+        
+      const cleanLanguages = languages
+        ? languages.filter((l) => l && l.trim())
         : undefined;
 
       const updateData = {
@@ -306,6 +362,10 @@ router.put(
         ...(experience !== undefined && { experience }),
         ...(cleanSpecialties &&
           cleanSpecialties.length > 0 && { specialties: cleanSpecialties }),
+        ...(cleanCountries &&
+          cleanCountries.length > 0 && { countriesOfOperation: cleanCountries }),
+        ...(cleanLanguages &&
+          cleanLanguages.length > 0 && { languages: cleanLanguages }),
         updatedAt: Date.now(),
       };
 

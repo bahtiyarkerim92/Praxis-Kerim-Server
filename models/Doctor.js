@@ -69,6 +69,18 @@ const doctorSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    countriesOfOperation: [
+      {
+        type: String,
+        trim: true,
+      },
+    ],
+    languages: [
+      {
+        type: String,
+        trim: true,
+      },
+    ],
     refreshTokens: {
       type: [
         {
