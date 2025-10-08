@@ -1315,7 +1315,7 @@ router.post(
       const coupon = await Coupon.findOne({
         code: couponCode.toUpperCase(),
         status: "active",
-      });
+      }).populate("doctorId", "name");
 
       console.log("🔍 Coupon found:", {
         found: !!coupon,
@@ -1324,6 +1324,8 @@ router.post(
         expiresAt: coupon?.expiresAt,
         usedBy: coupon?.usedBy,
         isValid: coupon?.isValid,
+        couponDoctorId: coupon?.doctorId?._id?.toString(),
+        appointmentDoctorId: doctorId,
         now: new Date(),
       });
 
@@ -1331,6 +1333,14 @@ router.post(
         return res.status(400).json({
           success: false,
           message: "Coupon not found",
+        });
+      }
+
+      // Verify coupon belongs to the selected doctor
+      if (coupon.doctorId._id.toString() !== doctorId.toString()) {
+        return res.status(400).json({
+          success: false,
+          message: `This coupon can only be used for appointments with Dr. ${coupon.doctorId.name}`,
         });
       }
 

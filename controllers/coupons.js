@@ -27,10 +27,13 @@ const createCoupon = async (req, res) => {
       });
     }
 
-    if (!doctor.isDoctor && !doctor.isAdmin) {
+    // Only doctors (or doctor+admin) can create coupons
+    // Admin-only users cannot create coupons
+    if (!doctor.isDoctor) {
       return res.status(403).json({
         success: false,
-        message: "Only doctors and admins can create coupons.",
+        message:
+          "Only doctors can create coupons. Admins can only manage and validate coupons.",
       });
     }
 
@@ -39,10 +42,10 @@ const createCoupon = async (req, res) => {
       doctorId,
       description: description || "Free consultation coupon",
       expiresAt: expiresAt ? new Date(expiresAt) : undefined, // Use default if not provided
-      // Auto-approve if doctor is admin
-      status: doctor.isAdmin ? "active" : "unconfirmed",
-      approvedBy: doctor.isAdmin ? doctorId : null,
-      approvedAt: doctor.isAdmin ? new Date() : null,
+      // Auto-approve if doctor has admin role (Doctor & Admin)
+      status: doctor.isAdmin && doctor.isDoctor ? "active" : "unconfirmed",
+      approvedBy: doctor.isAdmin && doctor.isDoctor ? doctorId : null,
+      approvedAt: doctor.isAdmin && doctor.isDoctor ? new Date() : null,
     });
 
     console.log("🎫 About to save coupon:", {
@@ -60,9 +63,10 @@ const createCoupon = async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: doctor.isAdmin
-        ? "Coupon created and activated successfully!"
-        : "Coupon created successfully. Awaiting admin approval.",
+      message:
+        doctor.isAdmin && doctor.isDoctor
+          ? "Coupon created and activated successfully!"
+          : "Coupon created successfully. Awaiting admin approval.",
       data: coupon,
     });
   } catch (error) {
@@ -195,7 +199,7 @@ const updateCouponStatus = async (req, res) => {
 // Validate and apply coupon (Patient side)
 const validateCoupon = async (req, res) => {
   try {
-    const { code } = req.body;
+    const { code, doctorId } = req.body;
     const patientId = req.user.userId || req.user._id;
 
     if (!code) {
@@ -214,6 +218,16 @@ const validateCoupon = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: "Invalid coupon code",
+      });
+    }
+
+    // Check if coupon belongs to the selected doctor
+    if (doctorId && coupon.doctorId._id.toString() !== doctorId.toString()) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "This coupon can only be used for appointments with Dr. " +
+          coupon.doctorId.name,
       });
     }
 
@@ -240,6 +254,7 @@ const validateCoupon = async (req, res) => {
       data: {
         code: coupon.code,
         description: coupon.description,
+        doctorId: coupon.doctorId._id,
         doctorName: coupon.doctorId.name,
         expiresAt: coupon.expiresAt,
       },
