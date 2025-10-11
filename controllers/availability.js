@@ -1,18 +1,12 @@
 const express = require("express");
 const { body, param, query, validationResult } = require("express-validator");
-const {
-  authenticateDoctorToken,
-  requireDoctorRole,
-  optionalDoctorAuth,
-} = require("../middleware/doctorAuth");
 const { authenticateToken } = require("../middleware/auth");
 const Availability = require("../models/Availability");
 const Doctor = require("../models/Doctor");
 
 const router = express.Router();
 
-// --- Helper Functions ---
-
+// Helper function
 const handleValidationErrors = (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -24,26 +18,14 @@ const handleValidationErrors = (req, res, next) => {
   next();
 };
 
-const requireAdmin = (req, res, next) => {
-  if (!req.doctor || !req.doctor.isAdmin) {
-    return res.status(403).json({
-      message: "Admin access required",
-    });
-  }
-  next();
-};
-
-// --- Validation Rules ---
-
+// Validation rules
 const availabilityValidationRules = [
   body("date")
     .isISO8601()
     .withMessage("Valid date is required")
     .custom((value) => {
-      // Parse the incoming date as UTC
       const appointmentDate = new Date(value + "T00:00:00.000Z");
       const todayUTC = new Date();
-      // Set to start of day in UTC
       todayUTC.setUTCHours(0, 0, 0, 0);
 
       if (appointmentDate < todayUTC) {
@@ -57,69 +39,20 @@ const availabilityValidationRules = [
   body("slots.*")
     .matches(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/)
     .withMessage("Each slot must be in HH:MM format"),
+  body("doctorId").isMongoId().withMessage("Valid doctor ID is required"),
 ];
 
-// --- Routes ---
-
-// GET /api/availability/doctor - Get doctor's own availability (authenticated, no filtering)
-router.get(
-  "/doctor",
-  authenticateDoctorToken,
-  requireDoctorRole,
-  async (req, res) => {
-    try {
-      const { date, startDate, endDate } = req.query;
-      const filter = { doctorId: req.doctor._id };
-
-      if (date) {
-        // Parse date as UTC to avoid timezone shifts
-        const targetDateUTC = new Date(date + "T00:00:00.000Z");
-        const nextDayUTC = new Date(targetDateUTC);
-        nextDayUTC.setUTCDate(nextDayUTC.getUTCDate() + 1);
-
-        filter.date = {
-          $gte: targetDateUTC,
-          $lt: nextDayUTC,
-        };
-      } else if (startDate && endDate) {
-        filter.date = {
-          $gte: new Date(startDate + "T00:00:00.000Z"),
-          $lte: new Date(endDate + "T23:59:59.999Z"),
-        };
-      }
-      // No default date filtering for doctors - they should see all their availability
-
-      const availability = await Availability.find(filter)
-        .populate("doctorId", "name email specialties")
-        .sort({ date: 1 });
-
-      res.json({
-        success: true,
-        data: availability,
-        count: availability.length,
-      });
-    } catch (error) {
-      console.error("Error fetching doctor availability:", error);
-      res.status(500).json({
-        message: "Error fetching availability",
-        error: error.message,
-      });
-    }
-  }
-);
-
-// GET /api/availability - Get availability (public endpoint for patients)
+// GET /api/availability - Get all availability
 router.get("/", async (req, res) => {
   try {
     const { doctorId, date, startDate, endDate } = req.query;
-    const filter = { isActive: true };
+    const filter = {};
 
     if (doctorId) {
       filter.doctorId = doctorId;
     }
 
     if (date) {
-      // Parse date as UTC to avoid timezone shifts (same as doctor endpoint)
       const targetDateUTC = new Date(date + "T00:00:00.000Z");
       const nextDayUTC = new Date(targetDateUTC);
       nextDayUTC.setUTCDate(nextDayUTC.getUTCDate() + 1);
@@ -133,60 +66,16 @@ router.get("/", async (req, res) => {
         $gte: new Date(startDate + "T00:00:00.000Z"),
         $lte: new Date(endDate + "T23:59:59.999Z"),
       };
-    } else {
-      // Only return future dates if no specific date range is provided
-      // Allow same-day bookings up to current time
-      const todayUTC = new Date();
-      todayUTC.setUTCHours(0, 0, 0, 0); // Start of today in UTC
-      filter.date = {
-        $gte: todayUTC,
-      };
     }
 
     const availability = await Availability.find(filter)
-      .populate("doctorId", "name email specialties")
+      .populate("doctorId", "name")
       .sort({ date: 1 });
-
-    // Transform the data to match client expectations, filtering out invalid entries
-    const transformedData = availability
-      .filter((avail) => avail.doctorId) // Only include entries with valid doctor references
-      .map((avail) => {
-        let availableSlots = avail.slots;
-
-        // For today's appointments, filter out slots that have already passed (UTC-based)
-        const availDateUTC = avail.date.toISOString().split("T")[0];
-        const todayUTC = new Date().toISOString().split("T")[0];
-
-        if (availDateUTC === todayUTC) {
-          // Production time filtering: Remove past slots with 30-minute buffer
-          const nowUTC = new Date();
-          availableSlots = avail.slots.filter((slot) => {
-            const [slotHour, slotMinute] = slot.split(":").map(Number);
-
-            // Create slot time in UTC
-            const slotTimeUTC = new Date(avail.date);
-            slotTimeUTC.setUTCHours(slotHour, slotMinute, 0, 0);
-
-            // Add 30-minute buffer
-            const bufferTimeUTC = new Date(nowUTC.getTime() + 30 * 60 * 1000);
-
-            return slotTimeUTC >= bufferTimeUTC;
-          });
-        }
-
-        return {
-          date: availDateUTC, // YYYY-MM-DD format
-          slots: availableSlots,
-          doctorId: avail.doctorId._id,
-          doctorName: avail.doctorId.name,
-        };
-      })
-      .filter((avail) => avail.slots.length > 0); // Only include availability with available slots
 
     res.json({
       success: true,
-      data: transformedData,
-      count: transformedData.length,
+      data: availability,
+      count: availability.length,
     });
   } catch (error) {
     console.error("Error fetching availability:", error);
@@ -197,16 +86,16 @@ router.get("/", async (req, res) => {
   }
 });
 
-// GET /api/availability/:id - Get single availability
+// GET /api/availability/:id - Get specific availability
 router.get(
   "/:id",
-  [param("id").isMongoId().withMessage("Invalid availability ID")],
+  param("id").isMongoId().withMessage("Invalid availability ID"),
   handleValidationErrors,
   async (req, res) => {
     try {
       const availability = await Availability.findById(req.params.id).populate(
         "doctorId",
-        "name email specialties"
+        "name"
       );
 
       if (!availability) {
@@ -229,50 +118,68 @@ router.get(
   }
 );
 
-// POST /api/availability - Create availability (doctors only)
+// POST /api/availability - Create availability
 router.post(
   "/",
-  authenticateDoctorToken,
-  requireDoctorRole,
+  authenticateToken,
   availabilityValidationRules,
   handleValidationErrors,
   async (req, res) => {
     try {
-      const { date, slots } = req.body;
+      const { doctorId, date, slots } = req.body;
 
-      // Check if availability already exists for this doctor and date
+      // Verify doctor exists
+      const doctor = await Doctor.findById(doctorId);
+      if (!doctor) {
+        return res.status(404).json({
+          message: "Doctor not found",
+        });
+      }
+
       const appointmentDateUTC = new Date(date + "T00:00:00.000Z");
+
+      // Check if availability already exists for this doctor on this date
       const existingAvailability = await Availability.findOne({
-        doctorId: req.doctor._id,
+        doctorId,
         date: appointmentDateUTC,
       });
 
       if (existingAvailability) {
         return res.status(409).json({
-          message: "Availability for this date already exists",
-          existingData: existingAvailability,
+          message: "Availability already exists for this date",
+          suggestion: "Use PUT to update existing availability",
         });
       }
 
-      // Remove duplicate slots and sort them
+      // Remove duplicates and sort slots
       const uniqueSlots = [...new Set(slots)].sort();
 
       const availability = new Availability({
-        doctorId: req.doctor._id,
+        doctorId,
         date: appointmentDateUTC,
         slots: uniqueSlots,
       });
 
       await availability.save();
-      await availability.populate("doctorId", "name email specialties");
+
+      const populatedAvailability = await Availability.findById(
+        availability._id
+      ).populate("doctorId", "name");
 
       res.status(201).json({
         success: true,
         message: "Availability created successfully",
-        data: availability,
+        data: populatedAvailability,
       });
     } catch (error) {
       console.error("Error creating availability:", error);
+
+      if (error.code === 11000) {
+        return res.status(409).json({
+          message: "Availability already exists for this date",
+        });
+      }
+
       res.status(500).json({
         message: "Error creating availability",
         error: error.message,
@@ -281,66 +188,41 @@ router.post(
   }
 );
 
-// PUT /api/availability/:id - Update availability (doctors can only edit their own)
+// PUT /api/availability/:id - Update availability
 router.put(
   "/:id",
-  authenticateDoctorToken,
-  requireDoctorRole,
+  authenticateToken,
   [
     param("id").isMongoId().withMessage("Invalid availability ID"),
     body("slots")
-      .optional()
       .isArray({ min: 1 })
       .withMessage("At least one time slot is required"),
     body("slots.*")
-      .optional()
       .matches(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/)
       .withMessage("Each slot must be in HH:MM format"),
-    body("isActive")
-      .optional()
-      .isBoolean()
-      .withMessage("isActive must be a boolean"),
   ],
   handleValidationErrors,
   async (req, res) => {
     try {
-      const { slots, isActive } = req.body;
+      const { slots } = req.body;
 
       const availability = await Availability.findById(req.params.id);
+
       if (!availability) {
         return res.status(404).json({
           message: "Availability not found",
         });
       }
 
-      // Check if doctor owns this availability
-      if (
-        !req.doctor.isAdmin &&
-        availability.doctorId.toString() !== req.doctor._id.toString()
-      ) {
-        return res.status(403).json({
-          message: "You can only edit your own availability",
-        });
-      }
+      // Remove duplicates and sort slots
+      const uniqueSlots = [...new Set(slots)].sort();
+      availability.slots = uniqueSlots;
 
-      const updateData = {};
+      await availability.save();
 
-      if (slots) {
-        // Remove duplicate slots and sort them
-        updateData.slots = [...new Set(slots)].sort();
-      }
-
-      if (isActive !== undefined) {
-        updateData.isActive = isActive;
-      }
-
-      updateData.updatedAt = Date.now();
-
-      const updatedAvailability = await Availability.findByIdAndUpdate(
-        req.params.id,
-        updateData,
-        { new: true, runValidators: true }
-      ).populate("doctorId", "name email specialties");
+      const updatedAvailability = await Availability.findById(
+        availability._id
+      ).populate("doctorId", "name");
 
       res.json({
         success: true,
@@ -357,29 +239,19 @@ router.put(
   }
 );
 
-// DELETE /api/availability/:id - Delete availability (doctors can only delete their own)
+// DELETE /api/availability/:id - Delete availability
 router.delete(
   "/:id",
-  authenticateDoctorToken,
-  requireDoctorRole,
+  authenticateToken,
   [param("id").isMongoId().withMessage("Invalid availability ID")],
   handleValidationErrors,
   async (req, res) => {
     try {
       const availability = await Availability.findById(req.params.id);
+
       if (!availability) {
         return res.status(404).json({
           message: "Availability not found",
-        });
-      }
-
-      // Check if doctor owns this availability
-      if (
-        !req.doctor.isAdmin &&
-        availability.doctorId.toString() !== req.doctor._id.toString()
-      ) {
-        return res.status(403).json({
-          message: "You can only delete your own availability",
         });
       }
 
@@ -388,7 +260,6 @@ router.delete(
       res.json({
         success: true,
         message: "Availability deleted successfully",
-        data: availability,
       });
     } catch (error) {
       console.error("Error deleting availability:", error);
@@ -400,11 +271,10 @@ router.delete(
   }
 );
 
-// POST /api/availability/:id/add-slot - Add time slot to existing availability
+// POST /api/availability/:id/add-slot - Add slot to existing availability
 router.post(
   "/:id/add-slot",
-  authenticateDoctorToken,
-  requireAdmin,
+  authenticateToken,
   [
     param("id").isMongoId().withMessage("Invalid availability ID"),
     body("slot")
@@ -417,6 +287,7 @@ router.post(
       const { slot } = req.body;
 
       const availability = await Availability.findById(req.params.id);
+
       if (!availability) {
         return res.status(404).json({
           message: "Availability not found",
@@ -424,38 +295,38 @@ router.post(
       }
 
       if (availability.slots.includes(slot)) {
-        return res.status(409).json({
-          message: "Time slot already exists",
+        return res.status(400).json({
+          message: "Slot already exists",
         });
       }
 
       availability.slots.push(slot);
       availability.slots.sort();
-      availability.updatedAt = Date.now();
-
       await availability.save();
-      await availability.populate("doctorId", "name email specialties");
+
+      const updatedAvailability = await Availability.findById(
+        availability._id
+      ).populate("doctorId", "name");
 
       res.json({
         success: true,
-        message: "Time slot added successfully",
-        data: availability,
+        message: "Slot added successfully",
+        data: updatedAvailability,
       });
     } catch (error) {
-      console.error("Error adding time slot:", error);
+      console.error("Error adding slot:", error);
       res.status(500).json({
-        message: "Error adding time slot",
+        message: "Error adding slot",
         error: error.message,
       });
     }
   }
 );
 
-// DELETE /api/availability/:id/remove-slot - Remove time slot from availability
+// DELETE /api/availability/:id/remove-slot - Remove slot from availability
 router.delete(
   "/:id/remove-slot",
-  authenticateDoctorToken,
-  requireAdmin,
+  authenticateToken,
   [
     param("id").isMongoId().withMessage("Invalid availability ID"),
     body("slot")
@@ -468,6 +339,7 @@ router.delete(
       const { slot } = req.body;
 
       const availability = await Availability.findById(req.params.id);
+
       if (!availability) {
         return res.status(404).json({
           message: "Availability not found",
@@ -475,27 +347,29 @@ router.delete(
       }
 
       const slotIndex = availability.slots.indexOf(slot);
+
       if (slotIndex === -1) {
-        return res.status(404).json({
-          message: "Time slot not found",
+        return res.status(400).json({
+          message: "Slot not found",
         });
       }
 
       availability.slots.splice(slotIndex, 1);
-      availability.updatedAt = Date.now();
-
       await availability.save();
-      await availability.populate("doctorId", "name email specialties");
+
+      const updatedAvailability = await Availability.findById(
+        availability._id
+      ).populate("doctorId", "name");
 
       res.json({
         success: true,
-        message: "Time slot removed successfully",
-        data: availability,
+        message: "Slot removed successfully",
+        data: updatedAvailability,
       });
     } catch (error) {
-      console.error("Error removing time slot:", error);
+      console.error("Error removing slot:", error);
       res.status(500).json({
-        message: "Error removing time slot",
+        message: "Error removing slot",
         error: error.message,
       });
     }

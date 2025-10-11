@@ -139,7 +139,7 @@ function shouldAutoComplete(appointment) {
   if (
     !appointment.date ||
     !appointment.slot ||
-    appointment.status !== "upcoming"
+    (appointment.status !== "upcoming" && appointment.status !== "confirmed")
   ) {
     return false;
   }

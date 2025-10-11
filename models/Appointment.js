@@ -1,11 +1,6 @@
 const mongoose = require("mongoose");
 
 const appointmentSchema = new mongoose.Schema({
-  patientId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "User",
-    required: true,
-  },
   doctorId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Doctor",
@@ -20,36 +15,23 @@ const appointmentSchema = new mongoose.Schema({
     required: true,
     match: /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, // HH:MM format validation
   },
-  plan: {
-    type: String,
-    required: true,
-    enum: ["consultation"],
-  },
   status: {
     type: String,
     required: true,
-    enum: [
-      "pending_payment",
-      "confirmed",
-      "upcoming",
-      "cancelled",
-      "completed",
-    ],
-    default: "pending_payment",
+    enum: ["scheduled", "cancelled", "completed"],
+    default: "scheduled",
+  },
+  title: {
+    type: String,
+    trim: true,
+  },
+  description: {
+    type: String,
+    trim: true,
   },
   notes: {
     type: String,
     trim: true,
-  },
-  reason: {
-    type: String,
-    trim: true,
-  },
-  // Coupon-related fields (paymentStatus exists below - will update that one)
-  couponCode: {
-    type: String,
-    trim: true,
-    uppercase: true,
   },
   createdAt: {
     type: Date,
@@ -59,15 +41,8 @@ const appointmentSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
-  confirmedAt: {
-    type: Date,
-  },
   cancelledAt: {
     type: Date,
-  },
-  cancelledBy: {
-    type: String,
-    enum: ["patient", "doctor"],
   },
   cancelReason: {
     type: String,
@@ -75,47 +50,6 @@ const appointmentSchema = new mongoose.Schema({
   },
   completedAt: {
     type: Date,
-  },
-  // Video call meeting fields for Daily.co integration
-  meetingRoomName: {
-    type: String,
-    default: "",
-  },
-  meetingUrl: {
-    type: String,
-    default: "",
-  },
-
-  // Payment related fields
-  paymentId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Payment",
-  },
-  paymentStatus: {
-    type: String,
-    enum: [
-      "pending",
-      "completed",
-      "failed",
-      "cancelled",
-      "refunded",
-      "free_coupon",
-    ],
-    default: "pending",
-  },
-  paymentAmount: {
-    type: Number,
-    default: 0,
-  },
-  paymentCurrency: {
-    type: String,
-    enum: ["BGN", "EUR"],
-    default: "EUR",
-  },
-  country: {
-    type: String,
-    enum: ["Bulgaria", "Germany"],
-    default: "Germany",
   },
 });
 

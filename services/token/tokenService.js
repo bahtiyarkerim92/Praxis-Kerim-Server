@@ -2,18 +2,19 @@ require("dotenv").config();
 const jwt = require("jsonwebtoken");
 const mongoose = require("mongoose");
 
-function generateAccessToken(user) {
-  return jwt.sign({ userId: user._id }, process.env.ACCESS_TOKEN_SECRET, {
+function generateAccessToken(userId, userType) {
+  return jwt.sign({ userId, userType }, process.env.ACCESS_TOKEN_SECRET, {
     expiresIn: "30m",
   });
 }
 
-function generateRefreshToken(user) {
+function generateRefreshToken(userId, userType) {
   const jti = new mongoose.Types.ObjectId().toString(); // Unique token ID
 
   const token = jwt.sign(
     {
-      userId: user._id,
+      userId,
+      userType,
       jti,
     },
     process.env.REFRESH_TOKEN_SECRET,
@@ -23,12 +24,6 @@ function generateRefreshToken(user) {
   );
 
   return { token, jti };
-}
-
-function generateValidationToken(user) {
-  return jwt.sign({ userId: user._id }, process.env.EMAIL_TOKEN_SECRET, {
-    expiresIn: "1h",
-  });
 }
 
 function verifyToken(token, secret) {
@@ -42,47 +37,70 @@ function verifyToken(token, secret) {
 /**
  * Store a refresh token for a user
  * @param {Object} user - User document
- * @param {string} token - JWT refresh token
- * @param {string} jti - JWT ID
+ * @param {Object} refreshToken - Object with token and jti properties
  * @returns {Promise} Promise resolving to updated user
  */
-async function storeRefreshToken(user, token, jti) {
-  try {
-    // If refreshTokens doesn't exist or is not an array, initialize it
-    if (!user.refreshTokens || !Array.isArray(user.refreshTokens)) {
-      user.refreshTokens = [];
+async function storeRefreshToken(user, refreshToken) {
+  const maxRetries = 3;
+  let lastError;
+
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      // Re-fetch the user to get the latest version
+      const Admin = require("../../models/Admin");
+      const freshUser = await Admin.findById(user._id);
+
+      if (!freshUser) {
+        throw new Error("User not found");
+      }
+
+      // If refreshTokens doesn't exist or is not an array, initialize it
+      if (!freshUser.refreshTokens || !Array.isArray(freshUser.refreshTokens)) {
+        freshUser.refreshTokens = [];
+      }
+
+      // Keep only the last 5 tokens (for security)
+      if (freshUser.refreshTokens.length >= 5) {
+        freshUser.refreshTokens = freshUser.refreshTokens.slice(-4);
+      }
+
+      // Create the new token object
+      const newToken = {
+        token: refreshToken.token,
+        jti: refreshToken.jti,
+        createdAt: new Date(),
+        invalidated: false,
+        invalidatedAt: null,
+      };
+
+      // Add the new token
+      freshUser.refreshTokens.push(newToken);
+
+      // Clean up old tokens (older than 7 days)
+      await cleanupOldTokens(freshUser);
+
+      return await freshUser.save();
+    } catch (error) {
+      lastError = error;
+
+      // If it's a version error and we have retries left, try again
+      if (error.name === "VersionError" && attempt < maxRetries - 1) {
+        console.log(
+          `⚠️ Version conflict, retrying... (attempt ${attempt + 1}/${maxRetries})`
+        );
+        // Wait a bit before retrying (exponential backoff)
+        await new Promise((resolve) =>
+          setTimeout(resolve, 50 * Math.pow(2, attempt))
+        );
+        continue;
+      }
+
+      console.error("🔴 [Token Service] Error storing refresh token:", error);
+      throw error;
     }
-
-    // Keep only the last 5 tokens (for security)
-    if (user.refreshTokens.length >= 5) {
-      // Log which tokens are being removed
-      const tokensBeingRemoved = user.refreshTokens.slice(
-        0,
-        user.refreshTokens.length - 4
-      );
-      user.refreshTokens = user.refreshTokens.slice(-4);
-    }
-
-    // Create the new token object
-    const newToken = {
-      token,
-      jti,
-      createdAt: new Date(),
-      invalidated: false,
-      invalidatedAt: null,
-    };
-
-    // Add the new token
-    user.refreshTokens.push(newToken);
-
-    // Clean up old tokens (older than 7 days)
-    await cleanupOldTokens(user);
-
-    return await user.save();
-  } catch (error) {
-    console.error("🔴 [Token Service] Error storing refresh token:", error);
-    throw error;
   }
+
+  throw lastError;
 }
 
 /**
@@ -179,7 +197,6 @@ async function cleanupOldTokens(user) {
 module.exports = {
   generateAccessToken,
   generateRefreshToken,
-  generateValidationToken,
   verifyToken,
   storeRefreshToken,
   invalidateRefreshToken,
