@@ -21,21 +21,18 @@ module.exports = () => (req, res, next) => {
 
   // Production origins
   const prodOrigins = [
-    "https://telemediker.com",
-    "https://www.telemediker.com",
-    "https://patient.telemediker.com", // Patient app subdomain
-    "https://doctor.telemediker.com", // Doctor app subdomain
-    "https://api.telemediker.com",
-    "https://telemediker-dashboard.netlify.app",
+    "https://praxiskerim.de",
+    "https://www.praxiskerim.de",
+    "https://admin.praxiskerim.de",
+    "https://api.praxiskerim.de",
   ];
 
   // Production trusted domains
   const prodTrustedDomains = [
-    "telemediker.com",
-    "www.telemediker.com",
-    "doctor.telemediker.com", // Doctor app subdomain
-    "patient.telemediker.com", // Patient app subdomain
-    "api.telemediker.com",
+    "praxiskerim.de",
+    "www.praxiskerim.de",
+    "admin.praxiskerim.de",
+    "api.praxiskerim.de",
   ];
 
   const allowedHeaders = [

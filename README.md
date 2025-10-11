@@ -1,23 +1,27 @@
 # Praxis Kerim Server
 
 ## 🏥 Overview
+
 Backend API server for Praxis Dr. Kerim medical practice management system. Built with Node.js, Express, and MongoDB.
 
 ## ✨ Features
 
 ### 🔐 **Authentication & Authorization**
+
 - Admin login with JWT tokens
 - Access & refresh token system
 - Secure password hashing with bcrypt
 - Role-based access control
 
 ### 👨‍⚕️ **Doctor Management**
+
 - CRUD operations for doctors
 - Specialty and language assignment
 - Working hours and availability
 - Doctor profiles
 
 ### 📅 **Appointment System**
+
 - Create, read, update, delete appointments
 - Appointment booking from website
 - Status management (scheduled, completed, cancelled)
@@ -25,6 +29,7 @@ Backend API server for Praxis Dr. Kerim medical practice management system. Buil
 - Doctor-patient assignment
 
 ### ⏰ **Availability Management**
+
 - Weekly schedules
 - Custom date availability
 - Time slot management
@@ -32,12 +37,14 @@ Backend API server for Praxis Dr. Kerim medical practice management system. Buil
 - Integration with appointment booking
 
 ### 🎉 **Holiday Management**
+
 - Add public holidays
 - Holiday calendar
 - Automatic date blocking in booking system
 - Holiday descriptions
 
 ### 📋 **Orders System**
+
 - Prescription orders (Rezepte)
 - Referral orders (Überweisungen)
 - Sick note orders (Krankmeldungen)
@@ -107,6 +114,7 @@ npm run create-admin
 ## 📚 API Endpoints
 
 ### Authentication
+
 ```
 POST   /api/auth/login              # Admin login
 POST   /api/auth/refresh            # Refresh access token
@@ -114,6 +122,7 @@ POST   /api/auth/logout             # Logout (clear tokens)
 ```
 
 ### Doctors
+
 ```
 GET    /api/doctors                 # Get all doctors (public)
 GET    /api/doctors/:id             # Get doctor by ID
@@ -123,6 +132,7 @@ DELETE /api/doctors/:id             # Delete doctor (admin)
 ```
 
 ### Appointments
+
 ```
 GET    /api/appointments            # Get all appointments (public)
 GET    /api/appointments/:id        # Get appointment by ID (public)
@@ -132,6 +142,7 @@ DELETE /api/appointments/:id        # Delete appointment (admin)
 ```
 
 ### Availability
+
 ```
 GET    /api/availability            # Get availability (public)
 GET    /api/availability/:id        # Get specific availability
@@ -143,6 +154,7 @@ DELETE /api/availability/:id/remove-slot # Remove time slot
 ```
 
 ### Holidays
+
 ```
 GET    /api/holidays                # Get all holidays (public)
 POST   /api/holidays                # Create holiday (admin)
@@ -150,6 +162,7 @@ DELETE /api/holidays/:id            # Delete holiday (admin)
 ```
 
 ### Orders
+
 ```
 GET    /api/orders                  # Get all orders (admin)
 POST   /api/orders                  # Create order (public)
@@ -160,6 +173,7 @@ DELETE /api/orders/:id              # Delete order (admin)
 ## 🗄️ Database Models
 
 ### Admin
+
 ```javascript
 {
   name: String,
@@ -173,6 +187,7 @@ DELETE /api/orders/:id              # Delete order (admin)
 ```
 
 ### Doctor
+
 ```javascript
 {
   name: String,
@@ -188,6 +203,7 @@ DELETE /api/orders/:id              # Delete order (admin)
 ```
 
 ### Appointment
+
 ```javascript
 {
   doctorId: ObjectId (ref: Doctor),
@@ -204,6 +220,7 @@ DELETE /api/orders/:id              # Delete order (admin)
 ```
 
 ### Availability
+
 ```javascript
 {
   doctorId: ObjectId (ref: Doctor),
@@ -216,6 +233,7 @@ DELETE /api/orders/:id              # Delete order (admin)
 ```
 
 ### Holiday
+
 ```javascript
 {
   date: Date,
@@ -227,6 +245,7 @@ DELETE /api/orders/:id              # Delete order (admin)
 ```
 
 ### Order
+
 ```javascript
 {
   patientInfo: {
@@ -298,9 +317,11 @@ telemedker-server/
 ## 🔧 Middleware
 
 ### Authentication Middleware
+
 ```javascript
-authenticateToken(req, res, next)
+authenticateToken(req, res, next);
 ```
+
 - Validates JWT access token
 - Attaches decoded user to req.user
 - Returns 401 if invalid/expired
@@ -308,6 +329,7 @@ authenticateToken(req, res, next)
 ## 🎯 Use Cases
 
 ### 1. Patient Books Appointment
+
 ```
 1. Patient visits website
 2. Selects doctor and date
@@ -317,6 +339,7 @@ authenticateToken(req, res, next)
 ```
 
 ### 2. Admin Manages Availability
+
 ```
 1. Admin logs in
 2. Creates weekly schedule
@@ -325,6 +348,7 @@ authenticateToken(req, res, next)
 ```
 
 ### 3. Patient Orders Prescription
+
 ```
 1. Patient fills order form
 2. POST /api/orders
@@ -336,6 +360,7 @@ authenticateToken(req, res, next)
 ## 🐛 Troubleshooting
 
 ### MongoDB Connection Issues
+
 ```bash
 # Check connection string
 # Ensure IP is whitelisted in MongoDB Atlas
@@ -343,6 +368,7 @@ authenticateToken(req, res, next)
 ```
 
 ### JWT Token Errors
+
 ```bash
 # Clear browser cookies
 # Check token expiry times
@@ -350,6 +376,7 @@ authenticateToken(req, res, next)
 ```
 
 ### CORS Errors
+
 ```bash
 # Add frontend URL to CORS whitelist
 # Check FRONTEND_URL and DASHBOARD_URL in .env
@@ -382,6 +409,7 @@ npm run dev
 ## 🚀 Deployment
 
 ### Production Checklist
+
 - [ ] Set NODE_ENV=production
 - [ ] Use strong JWT secrets
 - [ ] Enable HTTPS
@@ -392,6 +420,7 @@ npm run dev
 - [ ] Set up monitoring (e.g., PM2)
 
 ### Deploy to VPS
+
 ```bash
 # Using PM2
 npm install -g pm2
