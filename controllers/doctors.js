@@ -27,8 +27,8 @@ const doctorValidationRules = [
     .withMessage("Name must be between 2 and 100 characters"),
   body("priority")
     .optional()
-    .isInt({ min: 1 })
-    .withMessage("Priority must be a positive integer"),
+    .isInt({ min: 1, max: 20 })
+    .withMessage("Priority must be between 1 and 20"),
 ];
 
 // GET /api/doctors - Get all doctors (PUBLIC - no auth required)
@@ -123,11 +123,10 @@ router.patch(
         updateData.priority = priority;
       }
 
-      const doctor = await Doctor.findByIdAndUpdate(
-        req.params.id,
-        updateData,
-        { new: true, runValidators: true }
-      );
+      const doctor = await Doctor.findByIdAndUpdate(req.params.id, updateData, {
+        new: true,
+        runValidators: true,
+      });
 
       if (!doctor) {
         return res.status(404).json({

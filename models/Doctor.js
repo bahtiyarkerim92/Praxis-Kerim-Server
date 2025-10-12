@@ -9,8 +9,9 @@ const doctorSchema = new mongoose.Schema(
     },
     priority: {
       type: Number,
-      default: 999,
+      default: 10,
       min: 1,
+      max: 20,
     },
   },
   { timestamps: true }
