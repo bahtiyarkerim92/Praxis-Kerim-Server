@@ -7,6 +7,11 @@ const doctorSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    priority: {
+      type: Number,
+      default: 999,
+      min: 1,
+    },
   },
   { timestamps: true }
 );

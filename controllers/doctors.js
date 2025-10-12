@@ -25,12 +25,16 @@ const doctorValidationRules = [
     .withMessage("Name is required")
     .isLength({ min: 2, max: 100 })
     .withMessage("Name must be between 2 and 100 characters"),
+  body("priority")
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage("Priority must be a positive integer"),
 ];
 
 // GET /api/doctors - Get all doctors (PUBLIC - no auth required)
 router.get("/", async (req, res) => {
   try {
-    const doctors = await Doctor.find().sort({ name: 1 });
+    const doctors = await Doctor.find().sort({ priority: 1, name: 1 });
 
     return res.status(200).json({
       success: true,
@@ -83,9 +87,9 @@ router.post(
   handleValidationErrors,
   async (req, res) => {
     try {
-      const { name } = req.body;
+      const { name, priority } = req.body;
 
-      const doctor = new Doctor({ name });
+      const doctor = new Doctor({ name, priority });
       await doctor.save();
 
       return res.status(201).json({
@@ -112,11 +116,16 @@ router.patch(
   handleValidationErrors,
   async (req, res) => {
     try {
-      const { name } = req.body;
+      const { name, priority } = req.body;
+
+      const updateData = { name };
+      if (priority !== undefined) {
+        updateData.priority = priority;
+      }
 
       const doctor = await Doctor.findByIdAndUpdate(
         req.params.id,
-        { name },
+        updateData,
         { new: true, runValidators: true }
       );
 

@@ -41,13 +41,12 @@
         "jsonwebtoken": "^8.5.1",
         "mongoose": "^6.13.8",
         "multer": "^1.4.5-lts.1",
-        "nodemon": "^3.1.7",
         "sharp": "^0.33.2",
         "stripe": "^18.3.0",
         "uuid": "^11.1.0",
         "zod": "^4.1.4"
     },
     "devDependencies": {
-        "nodemon": "^3.1.7"
+        "nodemon": "^3.1.10"
     }
 }
