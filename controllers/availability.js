@@ -1,30 +1,3 @@
-// DELETE /api/availability/all?doctorId=... - Delete all availabilities for a doctor
-router.delete(
-  "/all",
-  authenticateToken,
-  [query("doctorId").isMongoId().withMessage("Valid doctor ID is required")],
-  handleValidationErrors,
-  async (req, res) => {
-    try {
-      const { doctorId } = req.query;
-      if (!doctorId) {
-        return res.status(400).json({ message: "doctorId is required" });
-      }
-      const result = await Availability.deleteMany({ doctorId });
-      res.json({
-        success: true,
-        message: `Deleted ${result.deletedCount} availabilities for doctor`,
-        deletedCount: result.deletedCount,
-      });
-    } catch (error) {
-      console.error("Error deleting all availabilities for doctor:", error);
-      res.status(500).json({
-        message: "Error deleting all availabilities for doctor",
-        error: error.message,
-      });
-    }
-  }
-);
 const express = require("express");
 const { body, param, query, validationResult } = require("express-validator");
 const { authenticateToken } = require("../middleware/auth");
