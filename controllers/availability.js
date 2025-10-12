@@ -376,4 +376,104 @@ router.delete(
   }
 );
 
+// POST /api/availability/copy - Copy schedule from one doctor to another
+router.post(
+  "/copy",
+  authenticateToken,
+  [
+    body("fromDoctorId")
+      .notEmpty()
+      .withMessage("Source doctor ID is required")
+      .isMongoId()
+      .withMessage("Valid source doctor ID is required"),
+    body("toDoctorId")
+      .notEmpty()
+      .withMessage("Target doctor ID is required")
+      .isMongoId()
+      .withMessage("Valid target doctor ID is required"),
+    body("startDate")
+      .optional()
+      .isISO8601()
+      .withMessage("Valid start date is required"),
+    body("endDate")
+      .optional()
+      .isISO8601()
+      .withMessage("Valid end date is required"),
+    body("overwrite")
+      .optional()
+      .isBoolean()
+      .withMessage("Overwrite must be boolean"),
+  ],
+  handleValidationErrors,
+  async (req, res) => {
+    try {
+      const { fromDoctorId, toDoctorId, startDate, endDate, overwrite = false } = req.body;
+
+      // Build query for source doctor's availability
+      const query = { doctorId: fromDoctorId };
+      if (startDate || endDate) {
+        query.date = {};
+        if (startDate) query.date.$gte = new Date(startDate);
+        if (endDate) query.date.$lte = new Date(endDate);
+      }
+
+      // Find source doctor's availabilities
+      const sourceAvailabilities = await Availability.find(query).lean();
+
+      if (sourceAvailabilities.length === 0) {
+        return res.status(404).json({
+          message: "No availabilities found for source doctor in the specified date range",
+        });
+      }
+
+      // Check if target doctor already has availabilities for these dates
+      if (!overwrite) {
+        const targetDates = sourceAvailabilities.map(a => a.date);
+        const existingTargetAvail = await Availability.find({
+          doctorId: toDoctorId,
+          date: { $in: targetDates },
+        });
+
+        if (existingTargetAvail.length > 0) {
+          return res.status(409).json({
+            message: `Target doctor already has ${existingTargetAvail.length} availabilities for these dates. Set overwrite=true to replace them.`,
+            conflictingDates: existingTargetAvail.map(a => a.date),
+          });
+        }
+      }
+
+      // If overwrite is true, delete existing availabilities for target doctor
+      if (overwrite) {
+        const targetDates = sourceAvailabilities.map(a => a.date);
+        await Availability.deleteMany({
+          doctorId: toDoctorId,
+          date: { $in: targetDates },
+        });
+      }
+
+      // Copy availabilities to target doctor
+      const newAvailabilities = sourceAvailabilities.map(avail => ({
+        doctorId: toDoctorId,
+        date: avail.date,
+        slots: avail.slots,
+        isActive: avail.isActive,
+      }));
+
+      const created = await Availability.insertMany(newAvailabilities);
+
+      res.status(201).json({
+        message: `Successfully copied ${created.length} availabilities from source to target doctor`,
+        count: created.length,
+        data: created,
+      });
+    } catch (error) {
+      console.error("Error copying schedule:", error);
+      res.status(500).json({
+        message: "Error copying schedule",
+        error: error.message,
+      });
+    }
+  }
+);
+
 module.exports = router;
