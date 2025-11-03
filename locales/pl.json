@@ -49,6 +49,26 @@
     "address": "Jacques-Offenbach-Straße 12, 63069 Offenbach am Main",
     "footer": "© {{year}} Praxis Dr. Kerim. Wszelkie prawa zastrzeżone."
   },
+  "orderReadyEmail": {
+    "subject": "Twoje zamówienie jest gotowe – Praxis Dr. Kerim",
+    "previewText": "Twoje zamówienie jest gotowe do odbioru",
+    "title": "Zamówienie zrealizowane",
+    "greeting": "Szanowny/a {{patientName}},",
+    "message": "z przyjemnością informujemy, że Twoje zamówienie zostało zrealizowane.",
+    "dependingOnType": "W zależności od rodzaju zamówienia:",
+    "referralInfo": "Skierowania można odebrać w naszej praktyce w godzinach otwarcia.",
+    "auInfo": "Zwolnienia lekarskie (AU) zostały już przesłane elektronicznie do Twojej kasy chorych; w razie potrzeby wydruk jest dostępny.",
+    "prescriptionInfo": "Recepty są wysyłane elektronicznie na Twoją kartę ubezpieczenia zdrowotnego, jednak niektóre recepty muszą być wydrukowane w formie papierowej, w takich przypadkach zostaniesz wezwany do praktyki e-mailem.",
+    "pickupLocation": "Miejsce odbioru:",
+    "practiceName": "Praxis Dr. Kerim",
+    "address": "Jacques-Offenbach-Straße 12, 63069 Offenbach am Main",
+    "contactTitle": "Jesteśmy do Twojej dyspozycji w razie pytań:",
+    "phone": "Telefon:",
+    "email": "E-mail:",
+    "whatsapp": "WhatsApp:",
+    "regards": "Z poważaniem",
+    "footer": "© {{year}} Praxis Dr. Kerim. Wszelkie prawa zastrzeżone."
+  },
   "reminderEmail": {
     "subject": "Przypomnienie: Twoja wizyta za {{time}} – Praxis Dr. Kerim",
     "previewText": "Przypomnienie o Twojej nadchodzącej wizycie w Praxis Dr. Kerim",

@@ -179,7 +179,7 @@ router.post("/book", async (req, res) => {
   try {
     const { slot, patient, locale } = req.body;
 
-    console.log("locale", locale);
+    console.log("patient", patient);
 
     // Validate required fields
     if (!slot || !patient) {
@@ -233,14 +233,17 @@ router.post("/book", async (req, res) => {
     }
 
     // Create appointment
+    console.log("patient.name", patient.name);
+    const patientFullName = patient.name;
+
     const appointment = new Appointment({
       doctorId: slot.doctorId,
       date: appointmentDate,
       slot: timeSlot,
       patientEmail: patient.email,
-      patientName: patient.name,
+      patientName: patientFullName || patient.name,
       patientPhone: patient.telefon || "",
-      title: "Termin",
+      title: patientFullName || patient.name || "Termin",
       description: `Geburtsdatum: ${patient.geburtsdatum || "N/A"}, Adresse: ${patient.adresse || "N/A"}, Versicherungsnummer: ${patient.versicherungsnummer || "N/A"}, Versicherungsart: ${patient.versicherungsart || "N/A"}`,
       status: "scheduled",
     });
@@ -254,13 +257,15 @@ router.post("/book", async (req, res) => {
     // Send confirmation email
     try {
       const emailLocale = locale || "de"; // Default to German if no locale provided
+
       await sendAppointmentConfirmation(
         patient.email,
         {
+          patientName: patientFullName,
           doctorName: doctor.name,
           date: appointmentDate,
           slot: timeSlot,
-          title: "Termin",
+          title: patientFullName || "Termin",
           description: "",
         },
         emailLocale
@@ -359,13 +364,16 @@ router.post(
 
       // Send confirmation email
       try {
+        const patientFullName = `${patientFirstName} ${patientLastName}`.trim();
+
         await sendAppointmentConfirmation(
           patientEmail,
           {
+            patientName: patientFullName,
             doctorName: doctor.name,
             date: appointmentDate,
             slot: slot,
-            title: title,
+            title: patientFullName || title,
             description: description,
           },
           "de" // Default locale, can be passed from request if needed

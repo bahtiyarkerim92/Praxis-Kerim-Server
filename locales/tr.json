@@ -49,6 +49,26 @@
     "address": "Jacques-Offenbach-Straße 12, 63069 Offenbach am Main",
     "footer": "© {{year}} Praxis Dr. Kerim. Tüm hakları saklıdır."
   },
+  "orderReadyEmail": {
+    "subject": "Siparişiniz hazır – Praxis Dr. Kerim",
+    "previewText": "Siparişiniz teslim almaya hazır",
+    "title": "Sipariş tamamlandı",
+    "greeting": "Sayın {{patientName}},",
+    "message": "siparişinizin tamamlandığını size bildirmekten mutluluk duyuyoruz.",
+    "dependingOnType": "Sipariş türünüze bağlı olarak:",
+    "referralInfo": "Sevk mektupları çalışma saatleri içinde pratiğimizden alınabilir.",
+    "auInfo": "İş göremezlik raporları (AU) zaten sağlık sigortanıza elektronik olarak iletilmiştir; gerekirse bir çıktı hazırdır.",
+    "prescriptionInfo": "Reçeteler sağlık sigortası kartınıza elektronik olarak gönderilir, ancak bazı reçetelerin kağıt formunda yazdırılması gerekir, bu durumlarda e-posta ile pratiğe çağrılacaksınız.",
+    "pickupLocation": "Teslim alma yeri:",
+    "practiceName": "Praxis Dr. Kerim",
+    "address": "Jacques-Offenbach-Straße 12, 63069 Offenbach am Main",
+    "contactTitle": "Sorularınız için hizmetinizdeyiz:",
+    "phone": "Telefon:",
+    "email": "E-posta:",
+    "whatsapp": "WhatsApp:",
+    "regards": "Saygılarımızla",
+    "footer": "© {{year}} Praxis Dr. Kerim. Tüm hakları saklıdır."
+  },
   "reminderEmail": {
     "subject": "Hatırlatma: Randevunuz {{time}} sonra – Praxis Dr. Kerim",
     "previewText": "Praxis Dr. Kerim'deki yaklaşan randevunuz için hatırlatma",

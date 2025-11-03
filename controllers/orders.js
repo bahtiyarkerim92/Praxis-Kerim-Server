@@ -2,7 +2,7 @@ const express = require("express");
 const { body, validationResult } = require("express-validator");
 const { authenticateToken } = require("../middleware/auth");
 const Order = require("../models/Order");
-const { sendOrderConfirmation } = require("../services/mailer");
+const { sendOrderConfirmation, sendOrderReady } = require("../services/mailer");
 
 const router = express.Router();
 
@@ -183,16 +183,43 @@ router.patch("/:id", authenticateToken, async (req, res) => {
       });
     }
 
+    // Get current order to check previous status
+    const currentOrder = await Order.findById(req.params.id);
+
+    if (!currentOrder) {
+      return res.status(404).json({
+        message: "Order not found",
+      });
+    }
+
+    const previousStatus = currentOrder.status;
+
     const order = await Order.findByIdAndUpdate(
       req.params.id,
       { status },
       { new: true }
     );
 
-    if (!order) {
-      return res.status(404).json({
-        message: "Order not found",
-      });
+    // Send "Order Ready" email when status changes to "completed"
+    if (status === "completed" && previousStatus !== "completed") {
+      try {
+        const patientFullName = `${order.vorname} ${order.nachname}`.trim();
+        const locale = order.locale || "de"; // Use locale from order or default to German
+
+        await sendOrderReady(
+          order.email,
+          {
+            patientName: patientFullName,
+          },
+          locale
+        );
+        console.log(
+          `Order ready email sent to: ${order.email} (locale: ${locale})`
+        );
+      } catch (emailError) {
+        // Log email error but don't fail the status update
+        console.error("Failed to send order ready email:", emailError);
+      }
     }
 
     return res.status(200).json({

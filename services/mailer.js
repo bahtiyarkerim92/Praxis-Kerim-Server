@@ -11,6 +11,9 @@ const {
   getOrderConfirmationTemplate,
 } = require("../emailTemplates/orderConfirmation");
 const {
+  getOrderReadyTemplate,
+} = require("../emailTemplates/orderReady");
+const {
   getAppointmentReminderTemplate,
 } = require("../emailTemplates/appointmentReminder");
 
@@ -182,6 +185,42 @@ async function sendOrderConfirmation(email, orderData, locale = "de") {
   }
 }
 
+async function sendOrderReady(email, orderData, locale = "de") {
+  const fromEmail = "info@praxiskerim.de";
+  const i18nServer = require("../config/i18n");
+
+  try {
+    await i18nServer.changeLanguage(locale);
+    
+    const htmlContent = await getOrderReadyTemplate(orderData, locale);
+
+    const params = {
+      Source: `Praxis Dr. Kerim <${fromEmail}>`,
+      Destination: {
+        ToAddresses: [email],
+      },
+      Message: {
+        Subject: {
+          Data: i18nServer.t("orderReadyEmail.subject"),
+        },
+        Body: {
+          Html: {
+            Data: htmlContent,
+          },
+        },
+      },
+    };
+
+    const command = new SendEmailCommand(params);
+    const response = await sesClient.send(command);
+    console.log("Order Ready Email sent:", response.MessageId);
+    return response;
+  } catch (error) {
+    console.error("Error sending order ready email:", error);
+    throw error;
+  }
+}
+
 async function sendAppointmentReminder(email, appointmentData, reminderType = "24h", locale = "de") {
   const fromEmail = "info@praxiskerim.de";
   const i18nServer = require("../config/i18n");
@@ -227,5 +266,6 @@ module.exports = {
   sendForgotPassword,
   sendAppointmentConfirmation,
   sendOrderConfirmation,
+  sendOrderReady,
   sendAppointmentReminder,
 };

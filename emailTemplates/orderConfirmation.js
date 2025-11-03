@@ -8,7 +8,7 @@ async function getOrderConfirmationTemplate(orderData, locale = "de") {
   try {
     // Set the language for this email
     await i18n.changeLanguage(locale);
-    
+
     const currentYear = new Date().getFullYear();
 
     // Format date based on locale
@@ -84,7 +84,7 @@ async function getOrderConfirmationTemplate(orderData, locale = "de") {
                                                             <tr>
                                                                 <td align="center"
                                                                     style="padding:0;Margin:0;padding-top:10px;padding-bottom:10px;font-size:0px">
-                                                                    <img src="https://images-pickup2.s3.eu-north-1.amazonaws.com/order-confirmation.png"
+                                                                    <img src="https://images-pickup2.s3.eu-north-1.amazonaws.com/confrim-email.png"
                                                                         alt="Bestellung Bestätigt" height="100" class="img-5752"
                                                                         style="display:block;font-size:14px;border:0;outline:none;text-decoration:none"
                                                                         width="107"></td>

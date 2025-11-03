@@ -49,6 +49,26 @@
     "address": "Jacques-Offenbach-Straße 12, 63069 Offenbach am Main",
     "footer": "© {{year}} Praxis Dr. Kerim. Alle Rechte vorbehalten."
   },
+  "orderReadyEmail": {
+    "subject": "Ihre Bestellung ist fertig – Praxis Dr. Kerim",
+    "previewText": "Ihre Bestellung ist zur Abholung bereit",
+    "title": "Bestellung fertiggestellt",
+    "greeting": "Sehr geehrte/r {{patientName}},",
+    "message": "wir freuen uns, Ihnen mitteilen zu können, dass Ihre Bestellung nun fertiggestellt wurde.",
+    "dependingOnType": "Je nach Art Ihrer Bestellung gilt:",
+    "referralInfo": "Überweisungen können während der Öffnungszeiten in unserer Praxis abgeholt werden.",
+    "auInfo": "Arbeitsunfähigkeitsbescheinigungen (AU) wurden bereits elektronisch an Ihre Krankenkasse übermittelt; bei Bedarf liegt ein Ausdruck für Sie bereit.",
+    "prescriptionInfo": "Rezepte sind elektronisch auf Ihre Krankenkarte versendet, manche Rezepte müssen jedoch in Papierform ausgedruckt sein, in diesen Fällen werden Sie per E-Mail in die Praxis gefordert.",
+    "pickupLocation": "Abholort:",
+    "practiceName": "Praxis Dr. Kerim",
+    "address": "Jacques-Offenbach-Straße 12, 63069 Offenbach am Main",
+    "contactTitle": "Für Rückfragen stehen wir Ihnen gerne zur Verfügung:",
+    "phone": "Telefon:",
+    "email": "E-Mail:",
+    "whatsapp": "WhatsApp:",
+    "regards": "Mit freundlichen Grüßen",
+    "footer": "© {{year}} Praxis Dr. Kerim. Alle Rechte vorbehalten."
+  },
   "reminderEmail": {
     "subject": "Erinnerung: Ihr Termin in {{time}} – Praxis Dr. Kerim",
     "previewText": "Erinnerung an Ihren bevorstehenden Termin bei Praxis Dr. Kerim",

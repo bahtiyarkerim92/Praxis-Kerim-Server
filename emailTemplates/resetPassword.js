@@ -140,8 +140,8 @@ ${getEmailHead(i18n.t("email.passwordReset.title"))}
                                                                         ${i18n.t(
                                                                           "email.passwordReset.regards"
                                                                         )},<br>${i18n.t(
-      "email.passwordReset.team"
-    )}</p>
+                                                                          "email.passwordReset.team"
+                                                                        )}</p>
                                                                 </td>
                                                             </tr>
                                                         </table>
