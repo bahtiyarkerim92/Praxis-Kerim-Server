@@ -233,7 +233,6 @@ router.post("/book", async (req, res) => {
     }
 
     // Create appointment
-    console.log("patient.name", patient.name);
     const patientFullName = patient.name;
 
     const appointment = new Appointment({
@@ -241,9 +240,9 @@ router.post("/book", async (req, res) => {
       date: appointmentDate,
       slot: timeSlot,
       patientEmail: patient.email,
-      patientName: patientFullName || patient.name,
+      patientName: patientFullName,
       patientPhone: patient.telefon || "",
-      title: patientFullName || patient.name || "Termin",
+      title: patientFullName || "Termin",
       description: `Geburtsdatum: ${patient.geburtsdatum || "N/A"}, Adresse: ${patient.adresse || "N/A"}, Versicherungsnummer: ${patient.versicherungsnummer || "N/A"}, Versicherungsart: ${patient.versicherungsart || "N/A"}`,
       status: "scheduled",
     });
