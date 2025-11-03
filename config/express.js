@@ -24,6 +24,9 @@ module.exports = (app) => {
 
   // Serve static files from uploads directory
   app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
+  
+  // Serve static files from public directory (for email assets like logo)
+  app.use("/public", express.static(path.join(__dirname, "../public")));
 
   console.log("✅ Express Session Initialized");
 };

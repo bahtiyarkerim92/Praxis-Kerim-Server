@@ -9,7 +9,12 @@ Create a `.env` file in the server root with the following variables:
 ```
 PORT=3030
 NODE_ENV=development
+SERVER_URL=http://localhost:3030
 ```
+
+- `SERVER_URL` is used for email templates to reference server assets (like the logo) in production
+- In development, emails use the public website URL since email clients can't access localhost
+- In production, set this to your actual server URL (e.g., `https://api.praxiskerim.de`) and set `NODE_ENV=production`
 
 ### Database
 
@@ -41,6 +46,34 @@ ADMIN_NAME=Admin
 
 - Used by the `createAdmin.js` script
 - Change the password after first login in production
+
+### Practice Information (For Email Templates)
+
+```
+PRACTICE_PHONE=+49 69 870015360
+PRACTICE_EMAIL=info@praxiskerim.de
+PRACTICE_WHATSAPP=+49 69 870015360
+ORDER_DEADLINE=14:00
+```
+
+- Used in order confirmation emails
+- `ORDER_DEADLINE` is the cutoff time for same-day order processing
+- `PRACTICE_WHATSAPP` should include country code for WhatsApp link
+
+### Appointment Reminder Scheduler (Optional)
+
+```
+REMINDER_CHECK_INTERVAL=*/30 * * * *
+ENABLE_24H_REMINDERS=true
+ENABLE_2H_REMINDERS=true
+```
+
+- `REMINDER_CHECK_INTERVAL`: Cron expression for how often to check for reminders (default: every 30 minutes)
+  - Examples: `*/15 * * * *` (every 15 min), `0 * * * *` (every hour), `0 */2 * * *` (every 2 hours)
+- `ENABLE_24H_REMINDERS`: Send 24-hour reminders (default: true)
+- `ENABLE_2H_REMINDERS`: Send 2-hour reminders (default: true)
+- Set to `false` to disable a specific reminder type
+- Reminders are automatically sent in the patient's selected language
 
 ## Setup Steps
 
@@ -113,6 +146,7 @@ The following environment variables are **NO LONGER NEEDED** (removed features):
 # Server
 PORT=3030
 NODE_ENV=production
+SERVER_URL=https://api.praxiskerim.de
 
 # Database
 DB_CONNECTION_STRING=mongodb+srv://username:password@cluster.mongodb.net/telemedker
@@ -125,6 +159,12 @@ REFRESH_TOKEN_SECRET=<generate-32-byte-random-hex>
 ADMIN_EMAIL=admin@yourdomain.com
 ADMIN_PASSWORD=<strong-password>
 ADMIN_NAME=Admin
+
+# Practice Information (For Email Templates)
+PRACTICE_PHONE=+49 69 870015360
+PRACTICE_EMAIL=info@praxiskerim.de
+PRACTICE_WHATSAPP=+49 69 870015360
+ORDER_DEADLINE=14:00
 ```
 
 ## For Port 3000 Appointment Form Project

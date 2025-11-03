@@ -15,6 +15,21 @@ const appointmentSchema = new mongoose.Schema({
     required: true,
     match: /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, // HH:MM format validation
   },
+  patientEmail: {
+    type: String,
+    required: true,
+    trim: true,
+    lowercase: true,
+    match: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, // Email format validation
+  },
+  patientName: {
+    type: String,
+    trim: true,
+  },
+  patientPhone: {
+    type: String,
+    trim: true,
+  },
   status: {
     type: String,
     required: true,

@@ -2,6 +2,7 @@ const express = require("express");
 const { body, validationResult } = require("express-validator");
 const { authenticateToken } = require("../middleware/auth");
 const Order = require("../models/Order");
+const { sendOrderConfirmation } = require("../services/mailer");
 
 const router = express.Router();
 
@@ -113,7 +114,7 @@ router.post(
   handleValidationErrors,
   async (req, res) => {
     try {
-      const { patient, orders } = req.body;
+      const { patient, orders, locale } = req.body;
 
       const order = new Order({
         patient,
@@ -122,6 +123,36 @@ router.post(
       });
 
       await order.save();
+
+      // Send confirmation email
+      try {
+        const patientName = `${patient.vorname} ${patient.nachname}`;
+        const orderType = orders.map((o) => o.type).join(", ");
+        const description = orders
+          .map((o) => `${o.type}${o.details ? ": " + o.details : ""}`)
+          .join("; ");
+
+        const emailLocale = locale || "de"; // Default to German if no locale provided
+
+        await sendOrderConfirmation(
+          patient.email,
+          {
+            patientName,
+            orderNumber: order._id.toString(),
+            orderType,
+            description,
+            createdAt: order.createdAt,
+            _id: order._id,
+          },
+          emailLocale
+        );
+        console.log(
+          `Order confirmation email sent to: ${patient.email} (locale: ${emailLocale})`
+        );
+      } catch (emailError) {
+        console.error("Error sending order confirmation email:", emailError);
+        // Don't fail the order creation if email fails
+      }
 
       return res.status(201).json({
         success: true,

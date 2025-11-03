@@ -3,6 +3,7 @@ const { body, param, query, validationResult } = require("express-validator");
 const { authenticateToken } = require("../middleware/auth");
 const Appointment = require("../models/Appointment");
 const Doctor = require("../models/Doctor");
+const { sendAppointmentConfirmation } = require("../services/mailer");
 
 const router = express.Router();
 
@@ -37,6 +38,20 @@ const appointmentValidationRules = [
   body("slot")
     .matches(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/)
     .withMessage("Slot must be in HH:MM format"),
+  body("patientEmail")
+    .isEmail()
+    .withMessage("Valid email address is required")
+    .normalizeEmail(),
+  body("patientName")
+    .optional()
+    .trim()
+    .isLength({ min: 2, max: 100 })
+    .withMessage("Patient name must be between 2 and 100 characters"),
+  body("patientPhone")
+    .optional()
+    .trim()
+    .isLength({ max: 20 })
+    .withMessage("Phone number must not exceed 20 characters"),
   body("title")
     .optional()
     .trim()
@@ -159,6 +174,126 @@ router.get(
   }
 );
 
+// POST /api/appointments/book - Book appointment from website (PUBLIC)
+router.post("/book", async (req, res) => {
+  try {
+    const { slot, patient, locale } = req.body;
+
+    console.log("locale", locale);
+
+    // Validate required fields
+    if (!slot || !patient) {
+      return res.status(400).json({
+        error: "Missing required fields: slot and patient data",
+      });
+    }
+
+    if (!slot.doctorId || !slot.when) {
+      return res.status(400).json({
+        error: "Invalid slot data: missing doctorId or when",
+      });
+    }
+
+    if (!patient.email || !patient.name) {
+      return res.status(400).json({
+        error: "Invalid patient data: missing email or name",
+      });
+    }
+
+    // Check if doctor exists
+    const doctor = await Doctor.findById(slot.doctorId);
+    if (!doctor) {
+      return res.status(404).json({
+        error: "Doctor not found",
+      });
+    }
+
+    // Parse the "when" field (e.g., "2025-10-30T10:30:00.000Z")
+    const whenDate = new Date(slot.when);
+    const appointmentDate = new Date(whenDate);
+    appointmentDate.setUTCHours(0, 0, 0, 0);
+
+    // Extract time slot in HH:MM format
+    const hours = whenDate.getUTCHours().toString().padStart(2, "0");
+    const minutes = whenDate.getUTCMinutes().toString().padStart(2, "0");
+    const timeSlot = `${hours}:${minutes}`;
+
+    // Check if slot is available
+    const existingAppointment = await Appointment.findOne({
+      doctorId: slot.doctorId,
+      date: appointmentDate,
+      slot: timeSlot,
+      status: { $in: ["scheduled"] },
+    });
+
+    if (existingAppointment) {
+      return res.status(409).json({
+        error: "Time slot is already booked",
+      });
+    }
+
+    // Create appointment
+    const appointment = new Appointment({
+      doctorId: slot.doctorId,
+      date: appointmentDate,
+      slot: timeSlot,
+      patientEmail: patient.email,
+      patientName: patient.name,
+      patientPhone: patient.telefon || "",
+      title: "Termin",
+      description: `Geburtsdatum: ${patient.geburtsdatum || "N/A"}, Adresse: ${patient.adresse || "N/A"}, Versicherungsnummer: ${patient.versicherungsnummer || "N/A"}, Versicherungsart: ${patient.versicherungsart || "N/A"}`,
+      status: "scheduled",
+    });
+
+    await appointment.save();
+
+    const populatedAppointment = await Appointment.findById(
+      appointment._id
+    ).populate("doctorId", "name");
+
+    // Send confirmation email
+    try {
+      const emailLocale = locale || "de"; // Default to German if no locale provided
+      await sendAppointmentConfirmation(
+        patient.email,
+        {
+          doctorName: doctor.name,
+          date: appointmentDate,
+          slot: timeSlot,
+          title: "Termin",
+          description: "",
+        },
+        emailLocale
+      );
+      console.log(
+        `Appointment confirmation email sent to: ${patient.email} (locale: ${emailLocale})`
+      );
+    } catch (emailError) {
+      // Log email error but don't fail the appointment creation
+      console.error("Failed to send confirmation email:", emailError);
+    }
+
+    return res.status(201).json({
+      success: true,
+      message: "Appointment booked successfully",
+      appointment: populatedAppointment,
+    });
+  } catch (error) {
+    console.error("Error booking appointment:", error);
+
+    if (error.code === 11000) {
+      return res.status(409).json({
+        error: "Time slot is already booked",
+      });
+    }
+
+    return res.status(500).json({
+      error: "Error booking appointment",
+      message: error.message,
+    });
+  }
+});
+
 // POST /api/appointments - Create appointment (PUBLIC - no auth required for patient bookings)
 router.post(
   "/",
@@ -166,8 +301,18 @@ router.post(
   handleValidationErrors,
   async (req, res) => {
     try {
-      const { doctorId, date, slot, title, description, notes } = req.body;
-
+      const {
+        doctorId,
+        date,
+        slot,
+        patientEmail,
+        patientName,
+        patientPhone,
+        title,
+        description,
+        notes,
+      } = req.body;
+      console.log(req.body);
       // Check if doctor exists
       const doctor = await Doctor.findById(doctorId);
       if (!doctor) {
@@ -197,6 +342,9 @@ router.post(
         doctorId,
         date: appointmentDate,
         slot,
+        patientEmail,
+        patientName,
+        patientPhone,
         title,
         description,
         notes,
@@ -208,6 +356,25 @@ router.post(
       const populatedAppointment = await Appointment.findById(
         appointment._id
       ).populate("doctorId", "name");
+
+      // Send confirmation email
+      try {
+        await sendAppointmentConfirmation(
+          patientEmail,
+          {
+            doctorName: doctor.name,
+            date: appointmentDate,
+            slot: slot,
+            title: title,
+            description: description,
+          },
+          "de" // Default locale, can be passed from request if needed
+        );
+        console.log("Appointment confirmation email sent to:", patientEmail);
+      } catch (emailError) {
+        // Log email error but don't fail the appointment creation
+        console.error("Failed to send confirmation email:", emailError);
+      }
 
       return res.status(201).json({
         success: true,

@@ -10,7 +10,7 @@ const cookieOptions = {
     sameSite: "none",
     maxAge: oneWeek,
     path: "/",
-    domain: ".telemediker.com", // Root domain to allow sharing between subdomains
+    domain: ".praxiskerim.de", // Root domain to allow sharing between subdomains
   },
   development: {
     httpOnly: false, // Allow client-side access for cross-domain auth detection
