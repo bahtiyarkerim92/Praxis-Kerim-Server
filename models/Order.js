@@ -33,6 +33,11 @@ const orderSchema = new mongoose.Schema(
       enum: ["pending", "processing", "completed", "cancelled"],
       default: "pending",
     },
+    locale: {
+      type: String,
+      default: "de",
+      enum: ["de", "en", "bg", "pl", "tr"],
+    },
   },
   { timestamps: true }
 );

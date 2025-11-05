@@ -48,6 +48,16 @@ const appointmentSchema = new mongoose.Schema({
     type: String,
     trim: true,
   },
+  locale: {
+    type: String,
+    default: "de",
+    enum: ["de", "en", "bg", "pl", "tr"],
+  },
+  managementToken: {
+    type: String,
+    unique: true,
+    sparse: true,
+  },
   createdAt: {
     type: Date,
     default: Date.now,

@@ -3,7 +3,9 @@ const { body, param, query, validationResult } = require("express-validator");
 const { authenticateToken } = require("../middleware/auth");
 const Appointment = require("../models/Appointment");
 const Doctor = require("../models/Doctor");
-const { sendAppointmentConfirmation } = require("../services/mailer");
+const { sendAppointmentConfirmation, sendAppointmentCancellation } = require("../services/mailer");
+const { createOrUpdatePatient } = require("../services/patientService");
+const crypto = require("crypto");
 
 const router = express.Router();
 
@@ -235,6 +237,9 @@ router.post("/book", async (req, res) => {
     // Create appointment
     const patientFullName = patient.name;
 
+    // Generate unique management token
+    const managementToken = crypto.randomBytes(32).toString("hex");
+
     const appointment = new Appointment({
       doctorId: slot.doctorId,
       date: appointmentDate,
@@ -244,6 +249,8 @@ router.post("/book", async (req, res) => {
       patientPhone: patient.telefon || "",
       title: patientFullName || "Termin",
       description: `Geburtsdatum: ${patient.geburtsdatum || "N/A"}, Adresse: ${patient.adresse || "N/A"}, Versicherungsnummer: ${patient.versicherungsnummer || "N/A"}, Versicherungsart: ${patient.versicherungsart || "N/A"}`,
+      locale: locale || "de",
+      managementToken: managementToken,
       status: "scheduled",
     });
 
@@ -252,6 +259,18 @@ router.post("/book", async (req, res) => {
     const populatedAppointment = await Appointment.findById(
       appointment._id
     ).populate("doctorId", "name");
+
+    // Save patient record for marketing (only if email doesn't exist)
+    try {
+      await createOrUpdatePatient({
+        name: patientFullName,
+        email: patient.email,
+        phone: patient.telefon || "",
+      });
+    } catch (patientError) {
+      console.error("Error saving patient record:", patientError);
+      // Don't fail appointment creation if patient save fails
+    }
 
     // Send confirmation email
     try {
@@ -266,6 +285,7 @@ router.post("/book", async (req, res) => {
           slot: timeSlot,
           title: patientFullName || "Termin",
           description: "",
+          managementToken: managementToken,
         },
         emailLocale
       );
@@ -431,6 +451,9 @@ router.patch(
 
       const { status, title, description, notes, cancelReason } = req.body;
 
+      // Track if appointment is being cancelled to send email
+      const isCancelling = status === "cancelled" && appointment.status !== "cancelled";
+
       if (status) {
         appointment.status = status;
         if (status === "cancelled") {
@@ -460,6 +483,33 @@ router.patch(
       const updatedAppointment = await Appointment.findById(
         appointment._id
       ).populate("doctorId", "name");
+
+      // Send cancellation email if appointment was just cancelled
+      if (isCancelling) {
+        try {
+          // Get patient email and locale
+          const patientEmail = updatedAppointment.patientEmail;
+          const locale = updatedAppointment.locale || "de";
+
+          if (patientEmail) {
+            // Prepare appointment data for email
+            const appointmentData = {
+              doctorName: updatedAppointment.doctorId?.name || "N/A",
+              date: updatedAppointment.date,
+              slot: updatedAppointment.slot,
+            };
+
+            // Send cancellation email
+            await sendAppointmentCancellation(patientEmail, appointmentData, locale);
+            console.log(`✅ Cancellation email sent to ${patientEmail}`);
+          } else {
+            console.log("⚠️ No patient email found, skipping cancellation email");
+          }
+        } catch (emailError) {
+          console.error("❌ Error sending cancellation email:", emailError);
+          // Don't fail the request if email fails
+        }
+      }
 
       return res.status(200).json({
         success: true,

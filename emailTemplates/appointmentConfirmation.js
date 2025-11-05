@@ -24,6 +24,12 @@ async function getAppointmentConfirmationTemplate(
     };
     const dateLocale = localeMap[locale] || "de-DE";
 
+    // Generate management link
+    const websiteUrl = process.env.WEBSITE_URL || "https://praxiskerim.de";
+    const managementUrl = appointmentData.managementToken
+      ? `${websiteUrl}/termin-verwalten?token=${appointmentData.managementToken}`
+      : null;
+
     // Format date
     const appointmentDate = new Date(appointmentData.date);
     const formattedDate = appointmentDate.toLocaleDateString(dateLocale, {
@@ -179,6 +185,35 @@ async function getAppointmentConfirmationTemplate(
                                                                     </ul>
                                                                 </td>
                                                             </tr>
+                                                            ${
+                                                              managementUrl
+                                                                ? `
+                                                            <tr>
+                                                                <td align="center" class="es-m-p10t es-m-p10b"
+                                                                    style="padding:0;Margin:0;padding-top:20px;padding-bottom:20px">
+                                                                    <p
+                                                                        style="Margin:0;mso-line-height-rule:exactly;font-family:arial, 'helvetica neue', helvetica, sans-serif;line-height:21px;letter-spacing:0;color:#333333;font-size:14px;margin-bottom:15px">
+                                                                        <strong>${i18n.t("appointmentEmail.manageTitle")}</strong>
+                                                                    </p>
+                                                                    <p
+                                                                        style="Margin:0;mso-line-height-rule:exactly;font-family:arial, 'helvetica neue', helvetica, sans-serif;line-height:21px;letter-spacing:0;color:#666666;font-size:13px;margin-bottom:15px">
+                                                                        ${i18n.t("appointmentEmail.manageDescription")}
+                                                                    </p>
+                                                                    <a href="${managementUrl}"
+                                                                        style="text-decoration:none;display:inline-block;background-color:#f06706;color:#ffffff;padding:12px 30px;border-radius:6px;font-family:arial, 'helvetica neue', helvetica, sans-serif;font-size:14px;font-weight:bold;mso-padding-alt:0;text-decoration:none">
+                                                                        <!--[if mso]>
+                                                                        <span style="padding:12px 30px;background-color:#f06706;color:#ffffff;font-weight:bold;">
+                                                                        <![endif]-->
+                                                                        ${i18n.t("appointmentEmail.manageButton")}
+                                                                        <!--[if mso]>
+                                                                        </span>
+                                                                        <![endif]-->
+                                                                    </a>
+                                                                </td>
+                                                            </tr>
+                                                            `
+                                                                : ""
+                                                            }
                                                             <tr>
                                                                 <td align="center" class="es-m-p10t es-m-p10b"
                                                                     style="padding:0;Margin:0;padding-top:20px;padding-bottom:20px">

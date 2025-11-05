@@ -2,8 +2,10 @@ const authController = require("../controllers/auth");
 const doctorsController = require("../controllers/doctors");
 const availabilityController = require("../controllers/availability");
 const appointmentsController = require("../controllers/appointments");
+const appointmentManagementController = require("../controllers/appointmentManagement");
 const holidaysController = require("../controllers/holidays");
 const ordersController = require("../controllers/orders");
+const patientsController = require("../controllers/patients");
 
 module.exports = (app) => {
   app.get("/", (req, res) => {
@@ -17,6 +19,8 @@ module.exports = (app) => {
   app.use("/api/doctors", doctorsController);
   app.use("/api/availability", availabilityController);
   app.use("/api/appointments", appointmentsController);
+  app.use("/api/appointment-management", appointmentManagementController); // Public appointment management
   app.use("/api/holidays", holidaysController);
   app.use("/api/orders", ordersController);
+  app.use("/api/patients", patientsController);
 };

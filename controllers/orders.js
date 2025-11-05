@@ -3,6 +3,7 @@ const { body, validationResult } = require("express-validator");
 const { authenticateToken } = require("../middleware/auth");
 const Order = require("../models/Order");
 const { sendOrderConfirmation, sendOrderReady } = require("../services/mailer");
+const { createOrUpdatePatient } = require("../services/patientService");
 
 const router = express.Router();
 
@@ -120,9 +121,23 @@ router.post(
         patient,
         orders,
         status: "pending",
+        locale: locale || "de",
       });
 
       await order.save();
+
+      // Save patient record for marketing (only if email doesn't exist)
+      try {
+        const patientName = `${patient.vorname} ${patient.nachname}`;
+        await createOrUpdatePatient({
+          name: patientName,
+          email: patient.email,
+          phone: patient.telefon || "",
+        });
+      } catch (patientError) {
+        console.error("Error saving patient record:", patientError);
+        // Don't fail order creation if patient save fails
+      }
 
       // Send confirmation email
       try {
@@ -203,22 +218,22 @@ router.patch("/:id", authenticateToken, async (req, res) => {
     // Send "Order Ready" email when status changes to "completed"
     if (status === "completed" && previousStatus !== "completed") {
       try {
-        const patientFullName = `${order.vorname} ${order.nachname}`.trim();
+        const patientFullName = `${order.patient.vorname} ${order.patient.nachname}`.trim();
         const locale = order.locale || "de"; // Use locale from order or default to German
 
         await sendOrderReady(
-          order.email,
+          order.patient.email,
           {
             patientName: patientFullName,
           },
           locale
         );
         console.log(
-          `Order ready email sent to: ${order.email} (locale: ${locale})`
+          `✅ Order ready email sent to: ${order.patient.email} (locale: ${locale})`
         );
       } catch (emailError) {
         // Log email error but don't fail the status update
-        console.error("Failed to send order ready email:", emailError);
+        console.error("❌ Failed to send order ready email:", emailError);
       }
     }
 

@@ -2,23 +2,11 @@
 
 ## Overview
 
-The TeleMedKer server now has a complete multilingual email system supporting 5 languages (German, English, Bulgarian, Polish, Turkish) across 5 different email types.
+The Praxis Kerim server has a complete multilingual email system supporting 5 languages (German, English, Bulgarian, Polish, Turkish) across multiple email types for appointment and order management.
 
 ## Email Types
 
-### 1. Email Confirmation (Account Validation)
-
-**Template**: `emailTemplates/confirmEmail.js`  
-**Function**: `sendValidationEmail(email, token)`  
-**Purpose**: Sent when a new user registers to verify their email address.
-
-### 2. Password Reset
-
-**Template**: `emailTemplates/resetPassword.js`  
-**Function**: `sendForgotPassword(email, token)`  
-**Purpose**: Sent when a user requests to reset their password.
-
-### 3. Appointment Confirmation
+### 1. Appointment Confirmation
 
 **Template**: `emailTemplates/appointmentConfirmation.js`  
 **Function**: `sendAppointmentConfirmation(email, appointmentData, locale)`  
@@ -30,7 +18,7 @@ The TeleMedKer server now has a complete multilingual email system supporting 5 
 - Important notes for patients
 - Practice contact information
 
-### 4. Order Confirmation
+### 2. Order Confirmation
 
 **Template**: `emailTemplates/orderConfirmation.js`  
 **Function**: `sendOrderConfirmation(email, orderData, locale)`  
@@ -42,7 +30,7 @@ The TeleMedKer server now has a complete multilingual email system supporting 5 
 - Processing time information
 - Practice contact information
 
-### 5. Appointment Reminder
+### 3. Appointment Reminder
 
 **Template**: `emailTemplates/appointmentReminder.js`  
 **Function**: `sendAppointmentReminder(email, appointmentData, reminderType, locale)`  
@@ -151,17 +139,14 @@ Central service for all email operations using AWS SES.
 ### Exported Functions
 
 ```javascript
-// Account validation
-sendValidationEmail(email, token);
-
-// Password reset
-sendForgotPassword(email, token);
-
 // Appointment confirmation (multilingual)
 sendAppointmentConfirmation(email, appointmentData, (locale = "de"));
 
 // Order confirmation (multilingual)
 sendOrderConfirmation(email, orderData, (locale = "de"));
+
+// Order ready notification (multilingual)
+sendOrderReady(email, orderData, (locale = "de"));
 
 // Appointment reminder (multilingual)
 sendAppointmentReminder(
@@ -170,6 +155,15 @@ sendAppointmentReminder(
   (reminderType = "24h"),
   (locale = "de")
 );
+
+// Appointment cancellation by admin (multilingual)
+sendAppointmentCancellation(email, appointmentData, (locale = "de"));
+
+// Appointment reschedule confirmation (multilingual)
+sendAppointmentReschedule(email, appointmentData, (locale = "de"));
+
+// Patient cancellation confirmation (multilingual)
+sendPatientCancellationConfirmation(email, appointmentData, (locale = "de"));
 ```
 
 ## Environment Variables
