@@ -42,7 +42,7 @@
     "orderType": "Rodzaj zamówienia:",
     "description": "Opis:",
     "importantTitle": "Prosimy zauważyć:",
-    "deadlineNote": "Zamówienia otrzymane w dni powszednie przed {{deadline}} są zazwyczaj realizowane w ciągu 1-2 dni roboczych.",
+    "deadlineNote": "Przetwarzanie Twojego zamówienia może potrwać do 24 godzin. Otrzymasz powiadomienie osobnym e-mailem, gdy zamówienie zostanie przetworzone.",
     "contactTitle": "Jesteśmy do Twojej dyspozycji w razie pytań:",
     "phone": "Telefon:",
     "email": "E-mail:",

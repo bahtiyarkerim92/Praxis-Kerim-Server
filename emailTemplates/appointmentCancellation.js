@@ -36,7 +36,6 @@ async function getAppointmentCancellationTemplate(appointmentData, locale = "de"
     // Practice information
     const practicePhone = process.env.PRACTICE_PHONE || "+49 69 870015360";
     const practiceEmail = process.env.PRACTICE_EMAIL || "info@praxiskerim.de";
-    const practiceWhatsapp = process.env.PRACTICE_WHATSAPP || "+49 69 870015360";
 
     return `
 <!DOCTYPE html
@@ -203,19 +202,10 @@ async function getAppointmentCancellationTemplate(appointmentData, locale = "de"
                                                             </tr>
                                                             <tr>
                                                                 <td align="left"
-                                                                    style="padding:0;Margin:0;padding-bottom:5px">
-                                                                    <p
-                                                                        style="Margin:0;mso-line-height-rule:exactly;font-family:arial, 'helvetica neue', helvetica, sans-serif;line-height:21px;letter-spacing:0;color:#333333;font-size:14px">
-                                                                        📧 <strong>${i18n.t("cancellationEmail.email")}:</strong> ${practiceEmail}
-                                                                    </p>
-                                                                </td>
-                                                            </tr>
-                                                            <tr>
-                                                                <td align="left"
                                                                     style="padding:0;Margin:0;padding-bottom:15px">
                                                                     <p
                                                                         style="Margin:0;mso-line-height-rule:exactly;font-family:arial, 'helvetica neue', helvetica, sans-serif;line-height:21px;letter-spacing:0;color:#333333;font-size:14px">
-                                                                        💬 <strong>${i18n.t("cancellationEmail.whatsapp")}:</strong> ${practiceWhatsapp}
+                                                                        📧 <strong>${i18n.t("cancellationEmail.email")}:</strong> ${practiceEmail}
                                                                     </p>
                                                                 </td>
                                                             </tr>

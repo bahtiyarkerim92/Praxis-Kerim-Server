@@ -42,7 +42,7 @@
     "orderType": "Art der Bestellung:",
     "description": "Beschreibung:",
     "importantTitle": "Bitte beachten Sie:",
-    "deadlineNote": "Bestellungen, die werktags bis {{deadline}} Uhr eingehen, werden in der Regel innerhalb von 1–2 Werktagen bearbeitet.",
+    "deadlineNote": "Die Bearbeitung Ihrer Bestellung kann bis zu 24 Stunden dauern. Sie werden mit einer separaten E-Mail benachrichtigt, sobald die Bestellung fertig bearbeitet wurde.",
     "contactTitle": "Für Rückfragen stehen wir Ihnen gerne zur Verfügung:",
     "phone": "Telefon:",
     "email": "E-Mail:",

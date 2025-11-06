@@ -33,7 +33,6 @@ async function getPatientCancellationConfirmationTemplate(appointmentData, local
     // Contact information from environment variables
     const practicePhone = process.env.PRACTICE_PHONE || "+49 69 870015360";
     const practiceEmail = process.env.PRACTICE_EMAIL || "info@praxiskerim.de";
-    const practiceWhatsappLink = process.env.PRACTICE_WHATSAPP_LINK || "https://wa.me/4969870015360";
 
     return `
 <!DOCTYPE html
@@ -190,8 +189,7 @@ async function getPatientCancellationConfirmationTemplate(appointmentData, local
                                                                     <p
                                                                         style="Margin:0;mso-line-height-rule:exactly;font-family:arial, 'helvetica neue', helvetica, sans-serif;line-height:21px;letter-spacing:0;color:#333333;font-size:14px">
                                                                         📞 ${i18n.t("patientCancellationConfirmation.phone")}: <a href="tel:${practicePhone}" style="color:#f06706">${practicePhone}</a><br>
-                                                                        📧 ${i18n.t("patientCancellationConfirmation.email")}: <a href="mailto:${practiceEmail}" style="color:#f06706">${practiceEmail}</a><br>
-                                                                        💬 ${i18n.t("patientCancellationConfirmation.whatsapp")}: <a href="${practiceWhatsappLink}" style="color:#f06706">${practicePhone}</a>
+                                                                        📧 ${i18n.t("patientCancellationConfirmation.email")}: <a href="mailto:${practiceEmail}" style="color:#f06706">${practiceEmail}</a>
                                                                     </p>
                                                                 </td>
                                                             </tr>

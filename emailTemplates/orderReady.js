@@ -14,7 +14,6 @@ async function getOrderReadyTemplate(orderData, locale = "de") {
     // Practice information
     const practicePhone = process.env.PRACTICE_PHONE || "+49 69 870015360";
     const practiceEmail = process.env.PRACTICE_EMAIL || "info@praxiskerim.de";
-    const practiceWhatsapp = process.env.PRACTICE_WHATSAPP || "+49 69 870015360";
 
     return `
 <!DOCTYPE html
@@ -144,8 +143,7 @@ async function getOrderReadyTemplate(orderData, locale = "de") {
                                                                         style="Margin:0;mso-line-height-rule:exactly;font-family:arial, 'helvetica neue', helvetica, sans-serif;line-height:21px;letter-spacing:0;color:#333333;font-size:14px">
                                                                         <strong>${i18n.t("orderReadyEmail.contactTitle")}</strong><br><br>
                                                                         📞 ${i18n.t("orderReadyEmail.phone")} <a href="tel:${practicePhone}" style="color:#f06706">${practicePhone}</a><br>
-                                                                        📧 ${i18n.t("orderReadyEmail.email")} <a href="mailto:${practiceEmail}" style="color:#f06706">${practiceEmail}</a><br>
-                                                                        💬 ${i18n.t("orderReadyEmail.whatsapp")} <a href="https://wa.me/${practiceWhatsapp.replace(/[^0-9]/g, "")}" style="color:#f06706">${practiceWhatsapp}</a>
+                                                                        📧 ${i18n.t("orderReadyEmail.email")} <a href="mailto:${practiceEmail}" style="color:#f06706">${practiceEmail}</a>
                                                                     </p>
                                                                 </td>
                                                             </tr>

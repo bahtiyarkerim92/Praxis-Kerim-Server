@@ -42,7 +42,7 @@
     "orderType": "Sipariş türü:",
     "description": "Açıklama:",
     "importantTitle": "Lütfen dikkat:",
-    "deadlineNote": "Hafta içi {{deadline}} saatinden önce alınan siparişler genellikle 1-2 iş günü içinde işleme alınır.",
+    "deadlineNote": "Siparişinizin işlenmesi 24 saate kadar sürebilir. Sipariş işlendiğinde ayrı bir e-posta ile bilgilendirileceksiniz.",
     "contactTitle": "Sorularınız için hizmetinizdeyiz:",
     "phone": "Telefon:",
     "email": "E-posta:",

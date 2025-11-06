@@ -37,8 +37,6 @@ async function getOrderConfirmationTemplate(orderData, locale = "de") {
     // Practice information
     const practicePhone = process.env.PRACTICE_PHONE || "+49 69 870015360";
     const practiceEmail = process.env.PRACTICE_EMAIL || "info@praxiskerim.de";
-    const practiceWhatsapp =
-      process.env.PRACTICE_WHATSAPP || "+49 69 870015360";
     const orderDeadline = process.env.ORDER_DEADLINE || "14:00";
 
     return `
@@ -189,7 +187,7 @@ async function getOrderConfirmationTemplate(orderData, locale = "de") {
                                                                     </p>
                                                                     <p
                                                                         style="Margin:0;mso-line-height-rule:exactly;font-family:arial, 'helvetica neue', helvetica, sans-serif;line-height:21px;letter-spacing:0;color:#333333;font-size:14px">
-                                                                        📆 ${i18n.t("orderEmail.deadlineNote", { deadline: orderDeadline })}</p>
+                                                                        📆 ${i18n.t("orderEmail.deadlineNote")}</p>
                                                                 </td>
                                                             </tr>
                                                             <tr>
@@ -199,8 +197,7 @@ async function getOrderConfirmationTemplate(orderData, locale = "de") {
                                                                         style="Margin:0;mso-line-height-rule:exactly;font-family:arial, 'helvetica neue', helvetica, sans-serif;line-height:21px;letter-spacing:0;color:#333333;font-size:14px">
                                                                         <strong>${i18n.t("orderEmail.contactTitle")}</strong><br><br>
                                                                         📞 ${i18n.t("orderEmail.phone")} <a href="tel:${practicePhone}" style="color:#f06706">${practicePhone}</a><br>
-                                                                        📧 ${i18n.t("orderEmail.email")} <a href="mailto:${practiceEmail}" style="color:#f06706">${practiceEmail}</a><br>
-                                                                        💬 ${i18n.t("orderEmail.whatsapp")} <a href="https://wa.me/${practiceWhatsapp.replace(/[^0-9]/g, "")}" style="color:#f06706">${practiceWhatsapp}</a>
+                                                                        📧 ${i18n.t("orderEmail.email")} <a href="mailto:${practiceEmail}" style="color:#f06706">${practiceEmail}</a>
                                                                     </p>
                                                                 </td>
                                                             </tr>

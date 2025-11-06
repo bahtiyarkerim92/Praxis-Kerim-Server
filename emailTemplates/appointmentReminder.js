@@ -37,7 +37,6 @@ async function getAppointmentReminderTemplate(appointmentData, reminderType = "2
     // Practice information
     const practicePhone = process.env.PRACTICE_PHONE || "+49 69 870015360";
     const practiceEmail = process.env.PRACTICE_EMAIL || "info@praxiskerim.de";
-    const practiceWhatsapp = process.env.PRACTICE_WHATSAPP || "+49 69 870015360";
 
     // Determine reminder time text
     const reminderTimeKey = reminderType === "24h" ? "reminderEmail.time24h" : "reminderEmail.time2h";
@@ -160,8 +159,7 @@ async function getAppointmentReminderTemplate(appointmentData, reminderType = "2
                                                                     <p
                                                                         style="Margin:0;mso-line-height-rule:exactly;font-family:arial, 'helvetica neue', helvetica, sans-serif;line-height:21px;letter-spacing:0;color:#333333;font-size:14px">
                                                                         📞 ${i18n.t("reminderEmail.phone")} <a href="tel:${practicePhone}" style="color:#f06706">${practicePhone}</a><br>
-                                                                        📧 ${i18n.t("reminderEmail.email")} <a href="mailto:${practiceEmail}" style="color:#f06706">${practiceEmail}</a><br>
-                                                                        💬 ${i18n.t("reminderEmail.whatsapp")} <a href="https://wa.me/${practiceWhatsapp.replace(/[^0-9]/g, "")}" style="color:#f06706">${practiceWhatsapp}</a>
+                                                                        📧 ${i18n.t("reminderEmail.email")} <a href="mailto:${practiceEmail}" style="color:#f06706">${practiceEmail}</a>
                                                                     </p>
                                                                 </td>
                                                             </tr>
