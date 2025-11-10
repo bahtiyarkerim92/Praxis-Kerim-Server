@@ -25,7 +25,29 @@
     "footer": "© {{year}} Praxis Kerim. Tüm hakları saklıdır.",
     "manageTitle": "Randevuyu Yönet",
     "manageDescription": "Randevunuzu istediğiniz zaman iptal edebilir veya erteleyebilirsiniz:",
-    "manageButton": "Randevuyu Yönet"
+    "manageButton": "Randevuyu Yönet",
+    "videoNote": "Bu randevu bir video görüşmesi olarak gerçekleştirilecektir. Lütfen stabil bir internet bağlantısı ile çalışan kamera ve mikrofon bulundurun. Erişim bağlantısı size ayrı bir e-posta ile iletilecektir."
+  },
+  "fridayVideoNotification": {
+    "subject": "Yeni Video Görüşmesi Alındı",
+    "previewText": "Bir hasta bir video görüşmesi randevusu aldı.",
+    "title": "Yeni Video Görüşmesi",
+    "intro": "Merhaba ekip,",
+    "message": "Bir hasta az önce bir video görüşmesi randevusu aldı. Önemli bilgiler aşağıdadır:",
+    "appointmentDetails": "Randevu Detayları",
+    "patientDetails": "Hasta Bilgileri",
+    "doctor": "Doktor",
+    "date": "Tarih",
+    "time": "Saat",
+    "patientName": "Adı",
+    "patientEmail": "E-posta",
+    "patientPhone": "Telefon",
+    "insuranceType": "Sigorta Türü",
+    "insuranceNumber": "Sigorta Numarası",
+    "notes": "Notlar",
+    "closing": "Lütfen video görüşmesi için gerekli hazırlıkları yapın ve erişim bilgilerini hazırlayın.",
+    "regards": "Selamlar",
+    "team": "Praxis ekibiniz"
   },
   "orderEmail": {
     "subject": "Sipariş Onayı – Praxis Dr. Kerim",
@@ -115,7 +137,8 @@
     "regards": "Saygılarımızla",
     "practiceName": "Praxis Dr. Kerim",
     "address": "Jacques-Offenbach-Straße 12, 63069 Offenbach am Main",
-    "footer": "© {{year}} Praxis Dr. Kerim. Tüm hakları saklıdır."
+    "footer": "© {{year}} Praxis Dr. Kerim. Tüm hakları saklıdır.",
+    "videoNote": "Not: Bu randevu bir video görüşmesi olarak planlanmıştı."
   },
   "rescheduleEmail": {
     "subject": "Randevu Ertelendi – Praxis Dr. Kerim",
@@ -135,7 +158,8 @@
     "regards": "Saygılarımızla",
     "practiceName": "Praxis Dr. Kerim",
     "address": "Jacques-Offenbach-Straße 12, 63069 Offenbach am Main",
-    "footer": "© {{year}} Praxis Dr. Kerim. Tüm hakları saklıdır."
+    "footer": "© {{year}} Praxis Dr. Kerim. Tüm hakları saklıdır.",
+    "videoNote": "Lütfen dikkat: Bu randevu video görüşmesi olarak gerçekleşecektir. Erişim bağlantısı size ayrı bir e-posta ile gönderilecektir."
   },
   "patientCancellationConfirmation": {
     "subject": "İptal Onaylandı – Praxis Dr. Kerim",
@@ -155,7 +179,8 @@
     "regards": "Saygılarımızla",
     "practiceName": "Praxis Dr. Kerim",
     "address": "Jacques-Offenbach-Straße 12, 63069 Offenbach am Main",
-    "footer": "© {{year}} Praxis Dr. Kerim. Tüm hakları saklıdır."
+    "footer": "© {{year}} Praxis Dr. Kerim. Tüm hakları saklıdır.",
+    "videoNote": "Not: Bu randevu başlangıçta bir video görüşmesi olarak planlanmıştı."
   }
 }
 

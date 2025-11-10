@@ -25,7 +25,29 @@
     "footer": "© {{year}} Praxis Kerim. Всички права запазени.",
     "manageTitle": "Управление на часа",
     "manageDescription": "Можете да отмените или пренасрочите вашия час по всяко време:",
-    "manageButton": "Управление на часа"
+    "manageButton": "Управление на часа",
+    "videoNote": "Този час ще се проведе като видео консултация. Моля, осигурете стабилна интернет връзка и работещи камера и микрофон. Ще получите линк за достъп в отделен имейл."
+  },
+  "fridayVideoNotification": {
+    "subject": "Нова видео консултация",
+    "previewText": "Пациент записа видео консултация.",
+    "title": "Нова видео консултация",
+    "intro": "Здравейте, екип,",
+    "message": "Пациент току-що записа видео консултация. Вижте основните детайли по-долу:",
+    "appointmentDetails": "Детайли за часа",
+    "patientDetails": "Информация за пациента",
+    "doctor": "Лекар",
+    "date": "Дата",
+    "time": "Час",
+    "patientName": "Име",
+    "patientEmail": "E-mail",
+    "patientPhone": "Телефон",
+    "insuranceType": "Здравна каса",
+    "insuranceNumber": "Номер на здравна каса",
+    "notes": "Бележки",
+    "closing": "Моля, подгответе видео консултацията и осигурете достъпните данни.",
+    "regards": "Поздрави",
+    "team": "Вашият екип на практиката"
   },
   "orderEmail": {
     "subject": "Потвърждение на поръчка – Praxis Dr. Kerim",
@@ -115,7 +137,8 @@
     "regards": "С уважение",
     "practiceName": "Praxis Dr. Kerim",
     "address": "Jacques-Offenbach-Straße 12, 63069 Offenbach am Main",
-    "footer": "© {{year}} Praxis Dr. Kerim. Всички права запазени."
+    "footer": "© {{year}} Praxis Dr. Kerim. Всички права запазени.",
+    "videoNote": "Напомняме, че този час беше планиран като видео консултация."
   },
   "rescheduleEmail": {
     "subject": "Часът е пренасрочен – Praxis Dr. Kerim",
@@ -135,7 +158,8 @@
     "regards": "С уважение",
     "practiceName": "Praxis Dr. Kerim",
     "address": "Jacques-Offenbach-Straße 12, 63069 Offenbach am Main",
-    "footer": "© {{year}} Praxis Dr. Kerim. Всички права запазени."
+    "footer": "© {{year}} Praxis Dr. Kerim. Всички права запазени.",
+    "videoNote": "Моля, имайте предвид: Този час ще се проведе като видео консултация. Ще получите линк за достъп в отделен имейл."
   },
   "patientCancellationConfirmation": {
     "subject": "Отмяната е потвърдена – Praxis Dr. Kerim",
@@ -155,7 +179,8 @@
     "regards": "С уважение",
     "practiceName": "Praxis Dr. Kerim",
     "address": "Jacques-Offenbach-Straße 12, 63069 Offenbach am Main",
-    "footer": "© {{year}} Praxis Dr. Kerim. Всички права запазени."
+    "footer": "© {{year}} Praxis Dr. Kerim. Всички права запазени.",
+    "videoNote": "Бележка: Този час първоначално беше планиран като видео консултация."
   }
 }
 

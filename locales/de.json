@@ -25,7 +25,29 @@
     "footer": "© {{year}} Praxis Kerim. Alle Rechte vorbehalten.",
     "manageTitle": "Termin verwalten",
     "manageDescription": "Sie können Ihren Termin jederzeit absagen oder verschieben:",
-    "manageButton": "Termin verwalten"
+    "manageButton": "Termin verwalten",
+    "videoNote": "Dieser Termin findet als Videosprechstunde statt. Bitte sorgen Sie für eine stabile Internetverbindung sowie funktionierende Kamera und Mikrofon. Der Zugangslink folgt in einer separaten E-Mail."
+  },
+  "fridayVideoNotification": {
+    "subject": "Neue Videosprechstunde gebucht",
+    "previewText": "Ein Patient hat eine Videosprechstunde gebucht.",
+    "title": "Neue Videosprechstunde",
+    "intro": "Hallo Praxisteam,",
+    "message": "soeben wurde eine Videosprechstunde gebucht. Hier sind die wichtigsten Informationen:",
+    "appointmentDetails": "Termindetails",
+    "patientDetails": "Patientendaten",
+    "doctor": "Behandler/in",
+    "date": "Datum",
+    "time": "Uhrzeit",
+    "patientName": "Name",
+    "patientEmail": "E-Mail",
+    "patientPhone": "Telefon",
+    "insuranceType": "Versicherung",
+    "insuranceNumber": "Versicherungsnummer",
+    "notes": "Notizen",
+    "closing": "Bitte bereitet die Videosprechstunde entsprechend vor und stellt die Zugangsdaten bereit.",
+    "regards": "Viele Grüße",
+    "team": "Euer Praxis-Team"
   },
   "orderEmail": {
     "subject": "Eingangsbestätigung Ihrer Bestellung – Praxis Dr. Kerim",
@@ -115,7 +137,8 @@
     "regards": "Mit freundlichen Grüßen",
     "practiceName": "Praxis Dr. Kerim",
     "address": "Jacques-Offenbach-Straße 12, 63069 Offenbach am Main",
-    "footer": "© {{year}} Praxis Dr. Kerim. Alle Rechte vorbehalten."
+    "footer": "© {{year}} Praxis Dr. Kerim. Alle Rechte vorbehalten.",
+    "videoNote": "Zur Erinnerung: Der ursprüngliche Termin war als Videosprechstunde geplant."
   },
   "rescheduleEmail": {
     "subject": "Termin verschoben – Praxis Dr. Kerim",
@@ -135,7 +158,8 @@
     "regards": "Mit freundlichen Grüßen",
     "practiceName": "Praxis Dr. Kerim",
     "address": "Jacques-Offenbach-Straße 12, 63069 Offenbach am Main",
-    "footer": "© {{year}} Praxis Dr. Kerim. Alle Rechte vorbehalten."
+    "footer": "© {{year}} Praxis Dr. Kerim. Alle Rechte vorbehalten.",
+    "videoNote": "Bitte beachten Sie: Dieser Termin findet als Videosprechstunde statt. Den Zugangslink erhalten Sie separat."
   },
   "patientCancellationConfirmation": {
     "subject": "Terminabsage bestätigt – Praxis Dr. Kerim",
@@ -155,7 +179,8 @@
     "regards": "Mit freundlichen Grüßen",
     "practiceName": "Praxis Dr. Kerim",
     "address": "Jacques-Offenbach-Straße 12, 63069 Offenbach am Main",
-    "footer": "© {{year}} Praxis Dr. Kerim. Alle Rechte vorbehalten."
+    "footer": "© {{year}} Praxis Dr. Kerim. Alle Rechte vorbehalten.",
+    "videoNote": "Hinweis: Dieser Termin war ursprünglich als Videosprechstunde geplant."
   }
 }
 

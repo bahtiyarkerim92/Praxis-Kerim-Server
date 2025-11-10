@@ -160,6 +160,19 @@ async function getAppointmentConfirmationTemplate(
                                                                     </table>
                                                                 </td>
                                                             </tr>
+                                                            ${
+                                                              appointmentData.isVideoAppointment
+                                                                ? `
+                                                            <tr>
+                                                              <td align="left" style="padding:0;Margin:0;padding-top:10px;padding-bottom:10px">
+                                                                <p style="Margin:0;mso-line-height-rule:exactly;font-family:arial, 'helvetica neue', helvetica, sans-serif;line-height:21px;letter-spacing:0;color:#333333;font-size:14px">
+                                                                  💻 ${i18n.t("appointmentEmail.videoNote")}
+                                                                </p>
+                                                              </td>
+                                                            </tr>
+                                                            `
+                                                                : ""
+                                                            }
                                                             <tr>
                                                                 <td align="center"
                                                                     class="es-m-p0r es-m-p0l es-m-p10t es-m-p10b"

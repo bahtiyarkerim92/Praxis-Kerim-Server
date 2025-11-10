@@ -26,6 +26,9 @@ const {
 const {
   getMarketingEmailTemplate,
 } = require("../emailTemplates/marketingEmail");
+const {
+  getFridayVideoNotificationTemplate,
+} = require("../emailTemplates/fridayVideoNotification");
 
 // Create SES service client
 const sesClient = new SESClient({
@@ -339,6 +342,55 @@ async function sendMarketingEmail(email, patientName, subject, content, locale =
   }
 }
 
+async function sendFridayVideoNotification(notificationData, locale = "de") {
+  const practiceEmail =
+    process.env.PRACTICE_TEAM_EMAIL ||
+    process.env.PRACTICE_EMAIL ||
+    "info@praxiskerim.de";
+  const fromEmail = process.env.PRACTICE_EMAIL || "info@praxiskerim.de";
+  const i18nServer = require("../config/i18n");
+
+  try {
+    await i18nServer.changeLanguage(locale);
+
+    const htmlContent = await getFridayVideoNotificationTemplate(
+      notificationData,
+      locale
+    );
+
+    const params = {
+      Source: `Praxis Dr. Kerim <${fromEmail}>`,
+      Destination: {
+        ToAddresses: [practiceEmail],
+      },
+      Message: {
+        Subject: {
+          Data: i18nServer.t("fridayVideoNotification.subject"),
+        },
+        Body: {
+          Html: {
+            Data: htmlContent,
+          },
+        },
+      },
+    };
+
+    const command = new SendEmailCommand(params);
+    const response = await sesClient.send(command);
+    console.log(
+      "Video consultation notification email sent:",
+      response.MessageId
+    );
+    return response;
+  } catch (error) {
+    console.error(
+      "Error sending video consultation notification email:",
+      error
+    );
+    throw error;
+  }
+}
+
 module.exports = {
   sendAppointmentConfirmation,
   sendOrderConfirmation,
@@ -348,4 +400,5 @@ module.exports = {
   sendAppointmentReschedule,
   sendPatientCancellationConfirmation,
   sendMarketingEmail,
+  sendFridayVideoNotification,
 };

@@ -3,11 +3,150 @@ const { body, param, query, validationResult } = require("express-validator");
 const { authenticateToken } = require("../middleware/auth");
 const Appointment = require("../models/Appointment");
 const Doctor = require("../models/Doctor");
-const { sendAppointmentConfirmation, sendAppointmentCancellation } = require("../services/mailer");
+const {
+  sendAppointmentConfirmation,
+  sendAppointmentCancellation,
+  sendFridayVideoNotification,
+} = require("../services/mailer");
 const { createOrUpdatePatient } = require("../services/patientService");
 const crypto = require("crypto");
 
 const router = express.Router();
+
+const BERLIN_TZ = "Europe/Berlin";
+
+const berlinWeekdayFormatter = new Intl.DateTimeFormat("en-US", {
+  weekday: "short",
+  timeZone: BERLIN_TZ,
+});
+
+const berlinDateFormatter = new Intl.DateTimeFormat("de-DE", {
+  timeZone: BERLIN_TZ,
+  weekday: "long",
+  year: "numeric",
+  month: "long",
+  day: "numeric",
+});
+
+const berlinTimeFormatter = new Intl.DateTimeFormat("de-DE", {
+  timeZone: BERLIN_TZ,
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
+const berlinOffsetFormatter = new Intl.DateTimeFormat("en-US", {
+  timeZone: BERLIN_TZ,
+  timeZoneName: "shortOffset",
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+  hour12: false,
+});
+
+const VIDEO_DOCTOR_NAMES = new Set(["M. Cem Samar"]);
+
+function getBerlinOffsetMinutes(date) {
+  const tzPart = berlinOffsetFormatter
+    .formatToParts(date)
+    .find((part) => part.type === "timeZoneName");
+
+  const match = tzPart?.value.match(/GMT([+-]\d{1,2})(?::(\d{2}))?/);
+  if (!match) {
+    return 60; // Default offset (UTC+1)
+  }
+
+  const sign = match[1].startsWith("-") ? -1 : 1;
+  const hours = Math.abs(Number(match[1]));
+  const minutes = match[2] ? Number(match[2]) : 0;
+
+  return sign * (hours * 60 + minutes);
+}
+
+function getAppointmentDateTimeUtcFromSlot(dateObj, slot) {
+  if (!dateObj || !slot) {
+    return null;
+  }
+
+  const [hour, minute] = slot.split(":").map(Number);
+  const year = dateObj.getUTCFullYear();
+  const month = dateObj.getUTCMonth();
+  const day = dateObj.getUTCDate();
+
+  const baseUtcMillis = Date.UTC(year, month, day, hour, minute);
+  const baseDate = new Date(baseUtcMillis);
+  const offsetMinutes = getBerlinOffsetMinutes(baseDate);
+
+  return new Date(baseUtcMillis - offsetMinutes * 60000);
+}
+
+function isBerlinFriday(dateUtc) {
+  if (!dateUtc) {
+    return false;
+  }
+  return berlinWeekdayFormatter.format(dateUtc) === "Fri";
+}
+
+function getBerlinFormattedDetails(dateUtc) {
+  if (!dateUtc) {
+    return {
+      formattedDate: "",
+      formattedTime: "",
+    };
+  }
+
+  return {
+    formattedDate: berlinDateFormatter.format(dateUtc),
+    formattedTime: berlinTimeFormatter.format(dateUtc),
+  };
+}
+
+function getAppointmentDateTimeUtcFromAppointment(appointment) {
+  if (!appointment || !appointment.date) {
+    return null;
+  }
+
+  const baseDate =
+    appointment.date instanceof Date
+      ? new Date(appointment.date)
+      : new Date(appointment.date);
+
+  if (!baseDate || Number.isNaN(baseDate.getTime())) {
+    return null;
+  }
+
+  if (appointment.slot) {
+    return getAppointmentDateTimeUtcFromSlot(baseDate, appointment.slot);
+  }
+
+  return baseDate;
+}
+
+function computeIsVideoAppointment(appointment) {
+  if (!appointment) {
+    return false;
+  }
+
+  if (
+    appointment.doctorId &&
+    typeof appointment.doctorId === "object" &&
+    appointment.doctorId !== null &&
+    appointment.doctorId.name &&
+    VIDEO_DOCTOR_NAMES.has(appointment.doctorId.name)
+  ) {
+    return true;
+  }
+
+  if (!appointment) {
+    return false;
+  }
+
+  if (typeof appointment.isVideoAppointment === "boolean") {
+    return appointment.isVideoAppointment;
+  }
+
+  const dateTimeUtc = getAppointmentDateTimeUtcFromAppointment(appointment);
+  return isBerlinFriday(dateTimeUtc);
+}
 
 // Helper function
 const handleValidationErrors = (req, res, next) => {
@@ -117,11 +256,19 @@ router.get("/", async (req, res) => {
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
-    const appointments = await Appointment.find(filter)
+    const appointmentsDocs = await Appointment.find(filter)
       .populate("doctorId", "name")
       .sort({ date: 1, slot: 1 })
       .skip(skip)
       .limit(parseInt(limit));
+
+    const appointments = appointmentsDocs.map((appointment) => {
+      const appointmentObj = appointment.toObject({ virtuals: true });
+      appointmentObj.isVideoAppointment = computeIsVideoAppointment(
+        appointmentObj
+      );
+      return appointmentObj;
+    });
 
     const total = await Appointment.countDocuments(filter);
 
@@ -151,16 +298,19 @@ router.get(
   handleValidationErrors,
   async (req, res) => {
     try {
-      const appointment = await Appointment.findById(req.params.id).populate(
+      const appointmentDoc = await Appointment.findById(req.params.id).populate(
         "doctorId",
         "name"
       );
 
-      if (!appointment) {
+      if (!appointmentDoc) {
         return res.status(404).json({
           message: "Appointment not found",
         });
       }
+
+      const appointment = appointmentDoc.toObject({ virtuals: true });
+      appointment.isVideoAppointment = computeIsVideoAppointment(appointment);
 
       return res.status(200).json({
         success: true,
@@ -202,6 +352,12 @@ router.post("/book", async (req, res) => {
       });
     }
 
+    if (!patient.geburtsdatum || String(patient.geburtsdatum).trim() === "") {
+      return res.status(400).json({
+        error: "Invalid patient data: missing birthdate",
+      });
+    }
+
     // Check if doctor exists
     const doctor = await Doctor.findById(slot.doctorId);
     if (!doctor) {
@@ -215,10 +371,17 @@ router.post("/book", async (req, res) => {
     const appointmentDate = new Date(whenDate);
     appointmentDate.setUTCHours(0, 0, 0, 0);
 
-    // Extract time slot in HH:MM format
-    const hours = whenDate.getUTCHours().toString().padStart(2, "0");
-    const minutes = whenDate.getUTCMinutes().toString().padStart(2, "0");
-    const timeSlot = `${hours}:${minutes}`;
+    // Extract time slot in HH:MM format (prefer original slot string if provided)
+    let timeSlot = typeof slot.slot === "string" ? slot.slot : null;
+    if (!timeSlot) {
+      const hours = whenDate.getUTCHours().toString().padStart(2, "0");
+      const minutes = whenDate.getUTCMinutes().toString().padStart(2, "0");
+      timeSlot = `${hours}:${minutes}`;
+    }
+
+    const doctorNameTrimmed = (doctor.name || "").trim();
+    const isVideoDoctor = VIDEO_DOCTOR_NAMES.has(doctorNameTrimmed);
+    const isVideoAppointment = isVideoDoctor || isBerlinFriday(whenDate);
 
     // Check if slot is available
     const existingAppointment = await Appointment.findOne({
@@ -252,6 +415,7 @@ router.post("/book", async (req, res) => {
       locale: locale || "de",
       managementToken: managementToken,
       status: "scheduled",
+      isVideoAppointment,
     });
 
     await appointment.save();
@@ -259,6 +423,9 @@ router.post("/book", async (req, res) => {
     const populatedAppointment = await Appointment.findById(
       appointment._id
     ).populate("doctorId", "name");
+    if (populatedAppointment) {
+      populatedAppointment.isVideoAppointment = isVideoAppointment;
+    }
 
     // Save patient record for marketing (only if email doesn't exist)
     try {
@@ -286,6 +453,7 @@ router.post("/book", async (req, res) => {
           title: patientFullName || "Termin",
           description: "",
           managementToken: managementToken,
+          isVideoAppointment,
         },
         emailLocale
       );
@@ -295,6 +463,34 @@ router.post("/book", async (req, res) => {
     } catch (emailError) {
       // Log email error but don't fail the appointment creation
       console.error("Failed to send confirmation email:", emailError);
+    }
+
+    // Notify practice about video consultations
+    try {
+      if (isVideoAppointment) {
+        const { formattedDate, formattedTime } =
+          getBerlinFormattedDetails(whenDate);
+
+        await sendFridayVideoNotification({
+          doctorName: doctor.name,
+          formattedDate,
+          formattedTime,
+          patientName: patientFullName,
+          patientEmail: patient.email,
+          patientPhone: patient.telefon || "",
+          insuranceType: patient.versicherungsart || "",
+          insuranceNumber: patient.versicherungsnummer || "",
+          notes: patient.notes || "",
+        });
+        console.log(
+          `📬 Video consultation notification sent for ${patient.email}`
+        );
+      }
+    } catch (notifyError) {
+      console.error(
+        "Failed to send video consultation notification:",
+        notifyError
+      );
     }
 
     return res.status(201).json({
@@ -362,6 +558,14 @@ router.post(
       }
 
       // Create appointment
+      const doctorNameTrimmed = (doctor.name || "").trim();
+      const isVideoDoctor = VIDEO_DOCTOR_NAMES.has(doctorNameTrimmed);
+      const isVideoAppointment =
+        isVideoDoctor ||
+        isBerlinFriday(
+          getAppointmentDateTimeUtcFromSlot(appointmentDate, slot)
+        );
+
       const appointment = new Appointment({
         doctorId,
         date: appointmentDate,
@@ -373,6 +577,7 @@ router.post(
         description,
         notes,
         status: "scheduled",
+        isVideoAppointment,
       });
 
       await appointment.save();
@@ -380,6 +585,9 @@ router.post(
       const populatedAppointment = await Appointment.findById(
         appointment._id
       ).populate("doctorId", "name");
+      if (populatedAppointment) {
+        populatedAppointment.isVideoAppointment = appointment.isVideoAppointment;
+      }
 
       // Send confirmation email
       try {
@@ -394,6 +602,7 @@ router.post(
             slot: slot,
             title: patientFullName || title,
             description: description,
+            isVideoAppointment: appointment.isVideoAppointment,
           },
           "de" // Default locale, can be passed from request if needed
         );
@@ -401,6 +610,38 @@ router.post(
       } catch (emailError) {
         // Log email error but don't fail the appointment creation
         console.error("Failed to send confirmation email:", emailError);
+      }
+
+      // Notify practice if appointment qualifies as video consultation
+      try {
+        if (appointment.isVideoAppointment) {
+          const appointmentDateTimeUtc = getAppointmentDateTimeUtcFromSlot(
+            appointmentDate,
+            slot
+          );
+          const { formattedDate, formattedTime } =
+            getBerlinFormattedDetails(appointmentDateTimeUtc);
+
+          await sendFridayVideoNotification({
+            doctorName: doctor.name,
+            formattedDate,
+            formattedTime,
+            patientName: patientName || "Patient",
+            patientEmail,
+            patientPhone: patientPhone || "",
+            insuranceType: "",
+            insuranceNumber: "",
+            notes: notes || "",
+          });
+          console.log(
+            `📬 Video consultation notification sent (manual create) for ${patientEmail}`
+          );
+        }
+      } catch (notifyError) {
+        console.error(
+          "Failed to send video consultation notification (manual create):",
+          notifyError
+        );
       }
 
       return res.status(201).json({
@@ -493,10 +734,13 @@ router.patch(
 
           if (patientEmail) {
             // Prepare appointment data for email
+            const isVideoAppointment =
+              computeIsVideoAppointment(updatedAppointment);
             const appointmentData = {
               doctorName: updatedAppointment.doctorId?.name || "N/A",
               date: updatedAppointment.date,
               slot: updatedAppointment.slot,
+              isVideoAppointment,
             };
 
             // Send cancellation email
@@ -520,6 +764,90 @@ router.patch(
       console.error("Error updating appointment:", error);
       return res.status(500).json({
         message: "Error updating appointment",
+        error: error.message,
+      });
+    }
+  }
+);
+
+// PUT /api/appointments/:id/cancel - Cancel appointment with optional reason (ADMIN)
+router.put(
+  "/:id/cancel",
+  authenticateToken,
+  param("id").isMongoId().withMessage("Valid appointment ID is required"),
+  body("reason").optional().trim().isLength({ max: 500 }),
+  handleValidationErrors,
+  async (req, res) => {
+    try {
+      const { reason } = req.body;
+
+      const appointment = await Appointment.findById(req.params.id).populate(
+        "doctorId",
+        "name"
+      );
+
+      if (!appointment) {
+        return res.status(404).json({
+          message: "Appointment not found",
+        });
+      }
+
+      if (appointment.status === "cancelled") {
+        return res.status(400).json({
+          message: "Appointment is already cancelled",
+        });
+      }
+
+      if (appointment.status === "completed") {
+        return res.status(400).json({
+          message: "Completed appointments cannot be cancelled",
+        });
+      }
+
+      appointment.status = "cancelled";
+      appointment.cancelledAt = new Date();
+      if (reason) {
+        appointment.cancelReason = reason;
+      }
+
+      await appointment.save();
+
+      const locale = appointment.locale || "de";
+      const patientEmail = appointment.patientEmail;
+
+      if (patientEmail) {
+        try {
+          await sendAppointmentCancellation(
+            patientEmail,
+            {
+              doctorName: appointment.doctorId?.name || "N/A",
+              date: appointment.date,
+              slot: appointment.slot,
+            },
+            locale
+          );
+          console.log(`✅ Cancellation email sent to ${patientEmail}`);
+        } catch (emailError) {
+          console.error("❌ Error sending cancellation email:", emailError);
+        }
+      } else {
+        console.log("⚠️ No patient email found, skipping cancellation email");
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: "Appointment cancelled successfully",
+        appointment: {
+          _id: appointment._id,
+          status: appointment.status,
+          cancelledAt: appointment.cancelledAt,
+          cancelReason: appointment.cancelReason,
+        },
+      });
+    } catch (error) {
+      console.error("Error cancelling appointment:", error);
+      return res.status(500).json({
+        message: "Error cancelling appointment",
         error: error.message,
       });
     }

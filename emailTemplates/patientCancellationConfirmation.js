@@ -104,6 +104,21 @@ async function getPatientCancellationConfirmationTemplate(appointmentData, local
                                                                         ${i18n.t("patientCancellationConfirmation.message")}</p>
                                                                 </td>
                                                             </tr>
+                                                            ${
+                                                              appointmentData.isVideoAppointment
+                                                                ? `
+                                                            <tr>
+                                                              <td align="left"
+                                                                  style="padding:0;Margin:0;padding-top:10px;padding-bottom:10px">
+                                                                <p
+                                                                  style="Margin:0;mso-line-height-rule:exactly;font-family:arial, 'helvetica neue', helvetica, sans-serif;line-height:21px;letter-spacing:0;color:#333333;font-size:14px">
+                                                                  💻 ${i18n.t("patientCancellationConfirmation.videoNote")}
+                                                                </p>
+                                                              </td>
+                                                            </tr>
+                                                            `
+                                                                : ""
+                                                            }
                                                         </table>
                                                     </td>
                                                 </tr>

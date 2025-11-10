@@ -26,6 +26,8 @@ const REMINDER_CHECK_INTERVAL =
 const ENABLE_24H_REMINDERS = process.env.ENABLE_24H_REMINDERS !== "false"; // Default: true
 const ENABLE_2H_REMINDERS = process.env.ENABLE_2H_REMINDERS !== "false"; // Default: true
 
+const VIDEO_DOCTOR_NAMES = new Set(["M. Cem Samar"]);
+
 function getReminderKey(appointmentId, type) {
   return `${appointmentId}_${type}`;
 }
@@ -59,7 +61,7 @@ async function checkAndSendReminders() {
           $lte: in24HoursPlus30Min,
         },
         status: { $in: ["pending", "confirmed"] },
-      }).populate("doctor", "name");
+      }).populate("doctorId", "name");
 
       console.log(
         `\n📋 24-Hour Reminders: Found ${appointments24h.length} appointments`
@@ -73,13 +75,21 @@ async function checkAndSendReminders() {
             const patientName =
               `${appointment.patient.firstName || ""} ${appointment.patient.lastName || ""}`.trim() ||
               "Patient";
+            const doctorNameTrimmed = appointment.doctorId?.name
+              ? appointment.doctorId.name.trim()
+              : "";
+            const isVideoDoctor = VIDEO_DOCTOR_NAMES.has(doctorNameTrimmed);
+            const isVideoAppointment =
+              appointment.isVideoAppointment || isVideoDoctor;
 
             await sendAppointmentReminder(
               appointment.patient.email,
               {
                 patientName,
-                doctorName: appointment.doctor?.name || "Dr. Kerim",
+                doctorName: appointment.doctorId?.name || "Dr. Kerim",
                 date: appointment.date,
+                slot: appointment.slot,
+                isVideoAppointment,
               },
               "24h",
               appointment.patient.locale || "de"
@@ -114,7 +124,7 @@ async function checkAndSendReminders() {
           $lte: in2HoursPlus30Min,
         },
         status: { $in: ["pending", "confirmed"] },
-      }).populate("doctor", "name");
+      }).populate("doctorId", "name");
 
       console.log(
         `\n📋 2-Hour Reminders: Found ${appointments2h.length} appointments`
@@ -128,13 +138,21 @@ async function checkAndSendReminders() {
             const patientName =
               `${appointment.patient.firstName || ""} ${appointment.patient.lastName || ""}`.trim() ||
               "Patient";
+            const doctorNameTrimmed = appointment.doctorId?.name
+              ? appointment.doctorId.name.trim()
+              : "";
+            const isVideoDoctor = VIDEO_DOCTOR_NAMES.has(doctorNameTrimmed);
+            const isVideoAppointment =
+              appointment.isVideoAppointment || isVideoDoctor;
 
             await sendAppointmentReminder(
               appointment.patient.email,
               {
                 patientName,
-                doctorName: appointment.doctor?.name || "Dr. Kerim",
+                doctorName: appointment.doctorId?.name || "Dr. Kerim",
                 date: appointment.date,
+                slot: appointment.slot,
+                isVideoAppointment,
               },
               "2h",
               appointment.patient.locale || "de"

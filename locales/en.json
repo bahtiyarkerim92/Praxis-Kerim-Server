@@ -25,7 +25,29 @@
     "footer": "© {{year}} Praxis Kerim. All rights reserved.",
     "manageTitle": "Manage Appointment",
     "manageDescription": "You can cancel or reschedule your appointment at any time:",
-    "manageButton": "Manage Appointment"
+    "manageButton": "Manage Appointment",
+    "videoNote": "This appointment will take place as a video consultation. Please ensure a stable internet connection and working camera/microphone. You will receive the access link in a separate email."
+  },
+  "fridayVideoNotification": {
+    "subject": "New Video Consultation Booked",
+    "previewText": "A patient has booked a video consultation.",
+    "title": "New Video Consultation",
+    "intro": "Hello practice team,",
+    "message": "A patient has just booked a video consultation. Please find the key details below:",
+    "appointmentDetails": "Appointment Details",
+    "patientDetails": "Patient Information",
+    "doctor": "Provider",
+    "date": "Date",
+    "time": "Time",
+    "patientName": "Name",
+    "patientEmail": "Email",
+    "patientPhone": "Phone",
+    "insuranceType": "Insurance",
+    "insuranceNumber": "Insurance Number",
+    "notes": "Notes",
+    "closing": "Please prepare the video session accordingly and provide the access details.",
+    "regards": "Kind regards",
+    "team": "Your Praxis Team"
   },
   "orderEmail": {
     "subject": "Order Confirmation – Praxis Dr. Kerim",
@@ -115,7 +137,8 @@
     "regards": "Best regards",
     "practiceName": "Praxis Dr. Kerim",
     "address": "Jacques-Offenbach-Straße 12, 63069 Offenbach am Main",
-    "footer": "© {{year}} Praxis Dr. Kerim. All rights reserved."
+    "footer": "© {{year}} Praxis Dr. Kerim. All rights reserved.",
+    "videoNote": "Reminder: This appointment was scheduled as a video consultation."
   },
   "rescheduleEmail": {
     "subject": "Appointment Rescheduled – Praxis Dr. Kerim",
@@ -135,7 +158,8 @@
     "regards": "Best regards",
     "practiceName": "Praxis Dr. Kerim",
     "address": "Jacques-Offenbach-Straße 12, 63069 Offenbach am Main",
-    "footer": "© {{year}} Praxis Dr. Kerim. All rights reserved."
+    "footer": "© {{year}} Praxis Dr. Kerim. All rights reserved.",
+    "videoNote": "Please note: This appointment will take place as a video consultation. The access link will be sent in a separate email."
   },
   "patientCancellationConfirmation": {
     "subject": "Cancellation Confirmed – Praxis Dr. Kerim",
@@ -155,7 +179,8 @@
     "regards": "Best regards",
     "practiceName": "Praxis Dr. Kerim",
     "address": "Jacques-Offenbach-Straße 12, 63069 Offenbach am Main",
-    "footer": "© {{year}} Praxis Dr. Kerim. All rights reserved."
+    "footer": "© {{year}} Praxis Dr. Kerim. All rights reserved.",
+    "videoNote": "Note: This appointment was originally set up as a video consultation."
   }
 }
 

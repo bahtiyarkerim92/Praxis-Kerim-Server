@@ -2,7 +2,114 @@ const express = require("express");
 const { body, param, query, validationResult } = require("express-validator");
 const Appointment = require("../models/Appointment");
 const Doctor = require("../models/Doctor");
-const { sendAppointmentCancellation } = require("../services/mailer");
+const {
+  sendAppointmentCancellation,
+  sendFridayVideoNotification,
+} = require("../services/mailer");
+
+const BERLIN_TZ = "Europe/Berlin";
+
+const berlinOffsetFormatter = new Intl.DateTimeFormat("en-US", {
+  timeZone: BERLIN_TZ,
+  timeZoneName: "shortOffset",
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+  hour12: false,
+});
+
+const berlinDateFormatter = new Intl.DateTimeFormat("de-DE", {
+  timeZone: BERLIN_TZ,
+  weekday: "long",
+  year: "numeric",
+  month: "long",
+  day: "numeric",
+});
+
+const berlinTimeFormatter = new Intl.DateTimeFormat("de-DE", {
+  timeZone: BERLIN_TZ,
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
+const berlinWeekdayFormatter = new Intl.DateTimeFormat("en-US", {
+  timeZone: BERLIN_TZ,
+  weekday: "short",
+});
+
+const VIDEO_DOCTOR_NAMES = new Set(["M. Cem Samar"]);
+
+function getBerlinOffsetMinutes(date) {
+  const tzPart = berlinOffsetFormatter
+    .formatToParts(date)
+    .find((part) => part.type === "timeZoneName");
+
+  const match = tzPart?.value.match(/GMT([+-]\d{1,2})(?::(\d{2}))?/);
+  if (!match) {
+    return 60; // Default UTC+1
+  }
+
+  const sign = match[1].startsWith("-") ? -1 : 1;
+  const hours = Math.abs(Number(match[1]));
+  const minutes = match[2] ? Number(match[2]) : 0;
+
+  return sign * (hours * 60 + minutes);
+}
+
+function convertBerlinDateStringSlotToUtc(dateStr, timeStr) {
+  if (!dateStr || !timeStr) {
+    return null;
+  }
+
+  const [year, month, day] = dateStr.split("-").map(Number);
+  const [hour, minute] = timeStr.split(":").map(Number);
+
+  const baseUtcMillis = Date.UTC(year, month - 1, day, hour, minute);
+  const baseDate = new Date(baseUtcMillis);
+  const offsetMinutes = getBerlinOffsetMinutes(baseDate);
+
+  return new Date(baseUtcMillis - offsetMinutes * 60000);
+}
+
+function getAppointmentDateTimeUtc(appointment) {
+  if (!appointment || !appointment.date) {
+    return null;
+  }
+
+  const appointmentDate = new Date(appointment.date);
+
+  const year = appointmentDate.getUTCFullYear();
+  const month = String(appointmentDate.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(appointmentDate.getUTCDate()).padStart(2, "0");
+  const dateStr = `${year}-${month}-${day}`;
+
+  if (!appointment.slot) {
+    return new Date(appointment.date);
+  }
+
+  return convertBerlinDateStringSlotToUtc(dateStr, appointment.slot);
+}
+
+function isBerlinFriday(dateUtc) {
+  if (!dateUtc) {
+    return false;
+  }
+  return berlinWeekdayFormatter.format(dateUtc) === "Fri";
+}
+
+function getBerlinFormattedDetails(dateUtc) {
+  if (!dateUtc) {
+    return {
+      formattedDate: "",
+      formattedTime: "",
+    };
+  }
+
+  return {
+    formattedDate: berlinDateFormatter.format(dateUtc),
+    formattedTime: berlinTimeFormatter.format(dateUtc),
+  };
+}
 
 const router = express.Router();
 
@@ -44,6 +151,16 @@ router.get(
         });
       }
 
+      const doctorNameTrimmed =
+        appointment.doctorId && appointment.doctorId.name
+          ? appointment.doctorId.name.trim()
+          : "";
+      const isVideoDoctor = VIDEO_DOCTOR_NAMES.has(doctorNameTrimmed);
+      const isVideoAppointment =
+        typeof appointment.isVideoAppointment === "boolean"
+          ? appointment.isVideoAppointment || isVideoDoctor
+          : isVideoDoctor || isBerlinFriday(getAppointmentDateTimeUtc(appointment));
+
       // Return appointment details (exclude sensitive fields)
       return res.status(200).json({
         success: true,
@@ -57,6 +174,7 @@ router.get(
           patientPhone: appointment.patientPhone,
           status: appointment.status,
           locale: appointment.locale,
+          isVideoAppointment,
           createdAt: appointment.createdAt,
         },
       });
@@ -105,11 +223,11 @@ router.patch(
         });
       }
 
-      // Check if appointment is in the past
-      const appointmentDateTime = new Date(appointment.date);
+      // Check if appointment is in the past (Berlin timezone aware)
+      const appointmentDateTime = getAppointmentDateTimeUtc(appointment);
       const now = new Date();
-      
-      if (appointmentDateTime < now) {
+
+      if (appointmentDateTime && appointmentDateTime <= now) {
         return res.status(400).json({
           message: "Cannot cancel an appointment that has already passed",
         });
@@ -123,7 +241,17 @@ router.patch(
 
       await appointment.save();
 
-      const updatedAppointment = await Appointment.findById(appointment._id).populate("doctorId", "name");
+      const updatedAppointment = await Appointment.findById(
+        appointment._id
+      ).populate("doctorId", "name");
+      const updatedDoctorName =
+        updatedAppointment?.doctorId?.name?.trim() || "";
+      const isVideoDoctorUpdated = VIDEO_DOCTOR_NAMES.has(updatedDoctorName);
+      const isVideoAppointment =
+        typeof updatedAppointment.isVideoAppointment === "boolean"
+          ? updatedAppointment.isVideoAppointment || isVideoDoctorUpdated
+          : isVideoDoctorUpdated ||
+            isBerlinFriday(getAppointmentDateTimeUtc(updatedAppointment));
 
       // Send cancellation confirmation email to patient
       try {
@@ -135,6 +263,7 @@ router.patch(
             doctorName: updatedAppointment.doctorId?.name || "N/A",
             date: updatedAppointment.date,
             slot: updatedAppointment.slot,
+            isVideoAppointment,
           };
           await sendPatientCancellationConfirmation(updatedAppointment.patientEmail, appointmentData, locale);
           console.log(`✅ Cancellation confirmation email sent to ${updatedAppointment.patientEmail}`);
@@ -155,6 +284,7 @@ router.patch(
           _id: appointment._id,
           status: appointment.status,
           cancelledAt: appointment.cancelledAt,
+          isVideoAppointment,
         },
       });
     } catch (error) {
@@ -206,7 +336,11 @@ router.patch(
 
       // Prepare new appointment date
       const newAppointmentDate = new Date(newDate + "T00:00:00.000Z");
-      const targetDoctorId = newDoctorId || appointment.doctorId._id;
+      const currentDoctorId =
+        typeof appointment.doctorId === "object" && appointment.doctorId !== null
+          ? appointment.doctorId._id || appointment.doctorId
+          : appointment.doctorId;
+      const targetDoctorId = newDoctorId || currentDoctorId;
 
       // Check if new doctor exists (if different)
       if (newDoctorId && newDoctorId !== appointment.doctorId._id.toString()) {
@@ -254,6 +388,23 @@ router.patch(
         appointment.doctorId = newDoctorId;
       }
       appointment.managementToken = newManagementToken; // Replace old token
+      let targetDoctor = appointment.doctorId;
+      if (
+        !targetDoctor ||
+        (typeof targetDoctor === "object" && !targetDoctor.name) ||
+        typeof targetDoctor === "string"
+      ) {
+        targetDoctor = await Doctor.findById(targetDoctorId).select("name");
+      }
+      const doctorNameTrimmed =
+        targetDoctor && targetDoctor.name ? targetDoctor.name.trim() : "";
+      const isVideoDoctor = VIDEO_DOCTOR_NAMES.has(doctorNameTrimmed);
+      const newAppointmentDateTimeUtc = getAppointmentDateTimeUtcFromSlot(
+        newAppointmentDate,
+        newSlot
+      );
+      appointment.isVideoAppointment =
+        isVideoDoctor || isBerlinFriday(newAppointmentDateTimeUtc);
       appointment.updatedAt = new Date();
 
       await appointment.save();
@@ -271,6 +422,7 @@ router.patch(
             date: updatedAppointment.date,
             slot: updatedAppointment.slot,
             managementToken: newManagementToken, // Send NEW token in email
+            isVideoAppointment: updatedAppointment.isVideoAppointment,
           };
           await sendAppointmentReschedule(updatedAppointment.patientEmail, appointmentData, locale);
           console.log(`✅ Reschedule email sent to ${updatedAppointment.patientEmail}`);
@@ -280,6 +432,47 @@ router.patch(
       } catch (emailError) {
         console.error("❌ Error sending reschedule email:", emailError);
         // Don't fail the request if email fails
+      }
+
+      // Notify practice if appointment is a video consultation
+      try {
+        const rescheduleDoctorName =
+          updatedAppointment?.doctorId?.name?.trim() || "";
+        const isVideoDoctorReschedule =
+          VIDEO_DOCTOR_NAMES.has(rescheduleDoctorName);
+        const isVideoAppointment =
+          typeof updatedAppointment.isVideoAppointment === "boolean"
+            ? updatedAppointment.isVideoAppointment || isVideoDoctorReschedule
+            : isVideoDoctorReschedule ||
+              isBerlinFriday(getAppointmentDateTimeUtc(updatedAppointment));
+
+        if (isVideoAppointment) {
+          const appointmentDateTimeUtc = getAppointmentDateTimeUtc(
+            updatedAppointment
+          );
+          const { formattedDate, formattedTime } =
+            getBerlinFormattedDetails(appointmentDateTimeUtc);
+
+          await sendFridayVideoNotification({
+            doctorName: updatedAppointment.doctorId?.name || "N/A",
+            formattedDate,
+            formattedTime,
+            patientName: updatedAppointment.patientName || "Patient",
+            patientEmail: updatedAppointment.patientEmail || "",
+            patientPhone: updatedAppointment.patientPhone || "",
+            insuranceType: updatedAppointment.description || "",
+            insuranceNumber: "",
+            notes: updatedAppointment.notes || "",
+          });
+          console.log(
+            `📬 Video consultation notification sent (reschedule) for ${updatedAppointment.patientEmail}`
+          );
+        }
+      } catch (notifyError) {
+        console.error(
+          "❌ Error sending video consultation notification after reschedule:",
+          notifyError
+        );
       }
 
       return res.status(200).json({
@@ -292,6 +485,7 @@ router.patch(
           slot: updatedAppointment.slot,
           status: updatedAppointment.status,
           updatedAt: updatedAppointment.updatedAt,
+          isVideoAppointment: updatedAppointment.isVideoAppointment,
         },
       });
     } catch (error) {

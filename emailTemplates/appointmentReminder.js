@@ -163,15 +163,22 @@ async function getAppointmentReminderTemplate(appointmentData, reminderType = "2
                                                                     </p>
                                                                 </td>
                                                             </tr>
+                                                            ${
+                                                              appointmentData.isVideoAppointment
+                                                                ? `
                                                             <tr>
-                                                                <td align="center"
-                                                                    class="es-m-p0r es-m-p0l es-m-p10t es-m-p10b"
-                                                                    style="Margin:0;padding-top:15px;padding-right:40px;padding-bottom:5px;padding-left:40px">
-                                                                    <p
-                                                                        style="Margin:0;mso-line-height-rule:exactly;font-family:arial, 'helvetica neue', helvetica, sans-serif;line-height:21px;letter-spacing:0;color:#666666;font-size:13px;font-style:italic">
-                                                                        ${i18n.t("reminderEmail.videoNote")}</p>
-                                                                </td>
+                                                              <td align="center"
+                                                                  class="es-m-p0r es-m-p0l es-m-p10t es-m-p10b"
+                                                                  style="Margin:0;padding-top:15px;padding-right:40px;padding-bottom:5px;padding-left:40px">
+                                                                  <p
+                                                                      style="Margin:0;mso-line-height-rule:exactly;font-family:arial, 'helvetica neue', helvetica, sans-serif;line-height:21px;letter-spacing:0;color:#666666;font-size:13px;font-style:italic">
+                                                                      ${i18n.t("reminderEmail.videoNote")}
+                                                                  </p>
+                                                              </td>
                                                             </tr>
+                                                            `
+                                                                : ""
+                                                            }
                                                             <tr>
                                                                 <td align="center"
                                                                     class="es-m-p0r es-m-p0l es-m-p10t es-m-p10b"
