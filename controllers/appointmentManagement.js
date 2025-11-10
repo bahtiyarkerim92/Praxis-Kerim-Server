@@ -71,6 +71,30 @@ function convertBerlinDateStringSlotToUtc(dateStr, timeStr) {
   return new Date(baseUtcMillis - offsetMinutes * 60000);
 }
 
+function getAppointmentDateTimeUtcFromSlot(dateObj, slot) {
+  if (!dateObj || !slot) {
+    return null;
+  }
+
+  const baseDate =
+    dateObj instanceof Date ? new Date(dateObj) : new Date(dateObj);
+
+  if (!baseDate || Number.isNaN(baseDate.getTime())) {
+    return null;
+  }
+
+  const [hour, minute] = slot.split(":").map(Number);
+  const year = baseDate.getUTCFullYear();
+  const month = baseDate.getUTCMonth();
+  const day = baseDate.getUTCDate();
+
+  const baseUtcMillis = Date.UTC(year, month, day, hour, minute);
+  const baseDateWithTime = new Date(baseUtcMillis);
+  const offsetMinutes = getBerlinOffsetMinutes(baseDateWithTime);
+
+  return new Date(baseUtcMillis - offsetMinutes * 60000);
+}
+
 function getAppointmentDateTimeUtc(appointment) {
   if (!appointment || !appointment.date) {
     return null;
