@@ -181,6 +181,36 @@
     "address": "Jacques-Offenbach-Straße 12, 63069 Offenbach am Main",
     "footer": "© {{year}} Praxis Dr. Kerim. Wszelkie prawa zastrzeżone.",
     "videoNote": "Informacja: ta wizyta pierwotnie była zaplanowana jako wideokonsultacja."
+  },
+  "marketingEmail": {
+    "greetingWithName": "Szanowny/a {{name}},",
+    "greetingWithoutName": "Szanowni Pacjenci,",
+    "title": "Aktualności z Praxis Dr. Kerim",
+    "subtitle": "Najważniejsze informacje i osobiste wiadomości od Twojego lekarza rodzinnego",
+    "closing": "Z poważaniem",
+    "signature": "Zespół Praxis Dr. Kerim",
+    "footer": "© {{year}} Praxis Dr. Kerim. Wszelkie prawa zastrzeżone."
+  },
+  "orderMissingInsurance": {
+    "subject": "Ważne: potrzebna karta ubezpieczenia do realizacji zamówienia",
+    "previewText": "Prosimy o dostarczenie karty ubezpieczenia do naszej przychodni, abyśmy mogli zrealizować zamówienie.",
+    "title": "Wymagana karta ubezpieczeniowa",
+    "greeting": "Szanowny/a {{patientName}},",
+    "message1": "Aby przetworzyć Twoje zamówienie, musimy zeskanować Twoją kartę ubezpieczenia na bieżący kwartał.",
+    "message2": "Prosimy o krótką wizytę w naszej przychodni w celu odczytania karty. Dopiero wtedy możemy zakończyć realizację zamówienia.",
+    "message3": "Gdy tylko karta będzie dostępna, natychmiast wznowimy realizację. Dziękujemy za zrozumienie.",
+    "highlight": "Bez wczytanej karty ubezpieczeniowej niestety nie możemy zrealizować zamówienia.",
+    "contactTitle": "W razie pytań prosimy o kontakt:",
+    "phone": "Telefon:",
+    "email": "E-mail:",
+    "practiceName": "Praxis Dr. Kerim",
+    "address": "Jacques-Offenbach-Straße 12, 63069 Offenbach am Main",
+    "regards": "Z poważaniem",
+    "team": "Zespół Praxis Dr. Kerim",
+    "footer": "© {{year}} Praxis Dr. Kerim. Wszelkie prawa zastrzeżone."
+  },
+  "doctorNames": {
+    "general": "WIZYTA U LEKARZA OGÓLNEGO"
   }
 }
 

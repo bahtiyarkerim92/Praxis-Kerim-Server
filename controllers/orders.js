@@ -2,7 +2,11 @@ const express = require("express");
 const { body, validationResult } = require("express-validator");
 const { authenticateToken } = require("../middleware/auth");
 const Order = require("../models/Order");
-const { sendOrderConfirmation, sendOrderReady } = require("../services/mailer");
+const {
+  sendOrderConfirmation,
+  sendOrderReady,
+  sendOrderMissingInsurance,
+} = require("../services/mailer");
 const { createOrUpdatePatient } = require("../services/patientService");
 
 const router = express.Router();
@@ -34,6 +38,10 @@ const orderValidationRules = [
     .notEmpty()
     .withMessage("Telefon ist erforderlich"),
   body("patient.email").isEmail().withMessage("Gültige E-Mail erforderlich"),
+  body("patient.geburtsdatum")
+    .trim()
+    .notEmpty()
+    .withMessage("Geburtsdatum ist erforderlich"),
   body("patient.strasse")
     .trim()
     .notEmpty()
@@ -246,6 +254,43 @@ router.patch("/:id", authenticateToken, async (req, res) => {
     console.error("Error updating order:", error);
     return res.status(500).json({
       message: "Error updating order",
+      error: error.message,
+    });
+  }
+});
+
+// POST /api/orders/:id/missing-card - Send missing insurance card email (ADMIN only)
+router.post("/:id/missing-card", authenticateToken, async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id);
+
+    if (!order) {
+      return res.status(404).json({
+        message: "Order not found",
+      });
+    }
+
+    const patientFullName = `${order.patient?.vorname || ""} ${
+      order.patient?.nachname || ""
+    }`.trim();
+    const locale = order.locale || "de";
+
+    await sendOrderMissingInsurance(
+      order.patient.email,
+      {
+        patientName: patientFullName,
+      },
+      locale
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "E-Mail zum fehlenden Versicherungskarteneintrag wurde gesendet",
+    });
+  } catch (error) {
+    console.error("Error sending missing insurance email:", error);
+    return res.status(500).json({
+      message: "Error sending missing insurance email",
       error: error.message,
     });
   }

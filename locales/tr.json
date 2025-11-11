@@ -181,6 +181,36 @@
     "address": "Jacques-Offenbach-Straße 12, 63069 Offenbach am Main",
     "footer": "© {{year}} Praxis Dr. Kerim. Tüm hakları saklıdır.",
     "videoNote": "Not: Bu randevu başlangıçta bir video görüşmesi olarak planlanmıştı."
+  },
+  "marketingEmail": {
+    "greetingWithName": "Sayın {{name}},",
+    "greetingWithoutName": "Sayın hastamız,",
+    "title": "Praxis Dr. Kerim'den Haberler",
+    "subtitle": "Aile hekiminizden güncel duyurular ve kişisel bilgilendirmeler",
+    "closing": "Saygılarımızla",
+    "signature": "Praxis Dr. Kerim Ekibiniz",
+    "footer": "© {{year}} Praxis Dr. Kerim. Tüm hakları saklıdır."
+  },
+  "orderMissingInsurance": {
+    "subject": "Önemli: Siparişiniz için sigorta kartı gerekli",
+    "previewText": "Siparişinizi işleyebilmemiz için lütfen sigorta kartınızı kliniğimize getiriniz.",
+    "title": "Sigorta kartı gerekli",
+    "greeting": "Sayın {{patientName}},",
+    "message1": "Siparişinizi işleyebilmemiz için mevcut çeyrek için sigorta kartınızın sisteme okutulması gerekiyor.",
+    "message2": "Lütfen kısa bir süreliğine kliniğimize uğrayarak kartınızı okutunuz. Ancak o zaman siparişinizi tamamlayabiliriz.",
+    "message3": "Kart bize ulaştığında talebinizi hemen işleme alacağız. Anlayışınız için teşekkür ederiz.",
+    "highlight": "Sisteme kayıtlı sigorta kartı olmadan maalesef siparişinizi işleyemeyiz.",
+    "contactTitle": "Sorularınız varsa bizimle iletişime geçebilirsiniz:",
+    "phone": "Telefon:",
+    "email": "E-posta:",
+    "practiceName": "Praxis Dr. Kerim",
+    "address": "Jacques-Offenbach-Straße 12, 63069 Offenbach am Main",
+    "regards": "Saygılarımızla",
+    "team": "Praxis Dr. Kerim Ekibiniz",
+    "footer": "© {{year}} Praxis Dr. Kerim. Tüm hakları saklıdır."
+  },
+  "doctorNames": {
+    "general": "GENEL DOKTOR RANDEVUSU"
   }
 }
 

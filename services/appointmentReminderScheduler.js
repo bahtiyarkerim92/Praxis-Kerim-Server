@@ -56,18 +56,21 @@ async function checkAndSendReminders() {
     // ==================== 24-HOUR REMINDERS ====================
     if (ENABLE_24H_REMINDERS) {
       const appointments24h = await Appointment.find({
-        date: {
-          $gte: in24Hours,
-          $lte: in24HoursPlus30Min,
-        },
-        status: { $in: ["pending", "confirmed"] },
-      }).populate("doctorId", "name");
+        status: { $in: ["scheduled", "confirmed"] },
+      })
+        .populate("doctorId", "name")
+        .exec();
+
+      const filtered24h = appointments24h.filter((appointment) => {
+        const when = new Date(appointment.date);
+        return when >= in24Hours && when <= in24HoursPlus30Min;
+      });
 
       console.log(
-        `\n📋 24-Hour Reminders: Found ${appointments24h.length} appointments`
+        `\n📋 24-Hour Reminders: Found ${filtered24h.length} appointments`
       );
 
-      for (const appointment of appointments24h) {
+      for (const appointment of filtered24h) {
         const reminderKey = getReminderKey(appointment._id, "24h");
 
         if (!sentReminders.has(reminderKey)) {
@@ -119,18 +122,21 @@ async function checkAndSendReminders() {
     // ==================== 2-HOUR REMINDERS ====================
     if (ENABLE_2H_REMINDERS) {
       const appointments2h = await Appointment.find({
-        date: {
-          $gte: in2Hours,
-          $lte: in2HoursPlus30Min,
-        },
-        status: { $in: ["pending", "confirmed"] },
-      }).populate("doctorId", "name");
+        status: { $in: ["scheduled", "confirmed"] },
+      })
+        .populate("doctorId", "name")
+        .exec();
+
+      const filtered2h = appointments2h.filter((appointment) => {
+        const when = new Date(appointment.date);
+        return when >= in2Hours && when <= in2HoursPlus30Min;
+      });
 
       console.log(
-        `\n📋 2-Hour Reminders: Found ${appointments2h.length} appointments`
+        `\n📋 2-Hour Reminders: Found ${filtered2h.length} appointments`
       );
 
-      for (const appointment of appointments2h) {
+      for (const appointment of filtered2h) {
         const reminderKey = getReminderKey(appointment._id, "2h");
 
         if (!sentReminders.has(reminderKey)) {

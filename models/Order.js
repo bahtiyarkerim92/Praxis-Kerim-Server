@@ -7,6 +7,7 @@ const orderSchema = new mongoose.Schema(
       nachname: { type: String, required: true },
       telefon: { type: String, required: true },
       email: { type: String, required: true },
+      geburtsdatum: { type: String, required: true },
       strasse: { type: String, required: true },
       hausnummer: { type: String, required: true },
       plz: { type: String, required: true },

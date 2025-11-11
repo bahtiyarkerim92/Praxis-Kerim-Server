@@ -510,6 +510,7 @@ router.patch(
           status: updatedAppointment.status,
           updatedAt: updatedAppointment.updatedAt,
           isVideoAppointment: updatedAppointment.isVideoAppointment,
+          managementToken: newManagementToken,
         },
       });
     } catch (error) {

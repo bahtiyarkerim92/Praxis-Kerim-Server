@@ -181,6 +181,36 @@
     "address": "Jacques-Offenbach-Straße 12, 63069 Offenbach am Main",
     "footer": "© {{year}} Praxis Dr. Kerim. Alle Rechte vorbehalten.",
     "videoNote": "Hinweis: Dieser Termin war ursprünglich als Videosprechstunde geplant."
+  },
+  "marketingEmail": {
+    "greetingWithName": "Sehr geehrte/r {{name}},",
+    "greetingWithoutName": "Sehr geehrte Patientin, sehr geehrter Patient,",
+    "title": "Neuigkeiten aus Ihrer Praxis Dr. Kerim",
+    "subtitle": "Aktuelle Informationen und persönliche Hinweise Ihrer Hausarztpraxis",
+    "closing": "Mit freundlichen Grüßen",
+    "signature": "Ihr Praxis Dr. Kerim Team",
+    "footer": "© {{year}} Praxis Dr. Kerim. Alle Rechte vorbehalten."
+  },
+  "orderMissingInsurance": {
+    "subject": "Wichtige Information: Versicherungskarte erforderlich",
+    "previewText": "Bitte bringen Sie Ihre Versicherungskarte vorbei, damit wir Ihre Bestellung bearbeiten können.",
+    "title": "Versicherungskarte erforderlich",
+    "greeting": "Sehr geehrte/r {{patientName}},",
+    "message1": "für die Bearbeitung Ihrer Bestellung benötigen wir Ihre elektronische Gesundheitskarte, eingelesen für das laufende Quartal.",
+    "message2": "Bitte besuchen Sie unsere Praxis kurz, damit wir die Karte einlesen können. Erst danach können wir Ihre Bestellung abschließen.",
+    "message3": "Sobald die Karte vorliegt, bearbeiten wir Ihr Anliegen umgehend. Vielen Dank für Ihr Verständnis.",
+    "highlight": "Ohne eine eingelesene Versicherungskarte dürfen wir Ihre Bestellung leider nicht bearbeiten.",
+    "contactTitle": "Bei Rückfragen sind wir gerne für Sie da:",
+    "phone": "Telefon:",
+    "email": "E-Mail:",
+    "practiceName": "Praxis Dr. Kerim",
+    "address": "Jacques-Offenbach-Straße 12, 63069 Offenbach am Main",
+    "regards": "Mit freundlichen Grüßen",
+    "team": "Ihr Praxis Dr. Kerim Team",
+    "footer": "© {{year}} Praxis Dr. Kerim. Alle Rechte vorbehalten."
+  },
+  "doctorNames": {
+    "general": "ALLGEMEINER ARZTTERMIN"
   }
 }
 

@@ -181,6 +181,36 @@
     "address": "Jacques-Offenbach-Straße 12, 63069 Offenbach am Main",
     "footer": "© {{year}} Praxis Dr. Kerim. All rights reserved.",
     "videoNote": "Note: This appointment was originally set up as a video consultation."
+  },
+  "marketingEmail": {
+    "greetingWithName": "Dear {{name}},",
+    "greetingWithoutName": "Dear patient,",
+    "title": "News from your Praxis Dr. Kerim",
+    "subtitle": "Latest updates and personal notes from your family practice",
+    "closing": "Kind regards",
+    "signature": "Your Praxis Dr. Kerim team",
+    "footer": "© {{year}} Praxis Dr. Kerim. All rights reserved."
+  },
+  "orderMissingInsurance": {
+    "subject": "Important: Insurance card required for your order",
+    "previewText": "Please bring your insurance card to our practice so we can process your order.",
+    "title": "Insurance card required",
+    "greeting": "Dear {{patientName}},",
+    "message1": "To process your order we need to scan your insurance card for the current quarter.",
+    "message2": "Please stop by our practice so we can read the card. Only then can we complete your order.",
+    "message3": "As soon as the card is available, we will continue processing immediately. Thank you for your understanding.",
+    "highlight": "Without a valid insurance card on file we are not allowed to process your order.",
+    "contactTitle": "If you have any questions, please contact us:",
+    "phone": "Phone:",
+    "email": "Email:",
+    "practiceName": "Praxis Dr. Kerim",
+    "address": "Jacques-Offenbach-Straße 12, 63069 Offenbach am Main",
+    "regards": "Kind regards",
+    "team": "Your Praxis Dr. Kerim team",
+    "footer": "© {{year}} Praxis Dr. Kerim. All rights reserved."
+  },
+  "doctorNames": {
+    "general": "GENERAL DOCTOR APPOINTMENT"
   }
 }
 

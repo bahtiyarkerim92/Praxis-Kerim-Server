@@ -181,6 +181,36 @@
     "address": "Jacques-Offenbach-Straße 12, 63069 Offenbach am Main",
     "footer": "© {{year}} Praxis Dr. Kerim. Всички права запазени.",
     "videoNote": "Бележка: Този час първоначално беше планиран като видео консултация."
+  },
+  "marketingEmail": {
+    "greetingWithName": "Уважаеми/а {{name}},",
+    "greetingWithoutName": "Уважаеми пациенти,",
+    "title": "Новини от вашата клиника Praxis Dr. Kerim",
+    "subtitle": "Актуална информация и лични съобщения от вашия семеен лекар",
+    "closing": "С уважение",
+    "signature": "Екипът на Praxis Dr. Kerim",
+    "footer": "© {{year}} Praxis Dr. Kerim. Всички права запазени."
+  },
+  "orderMissingInsurance": {
+    "subject": "Важно: необходима е здравната Ви карта за поръчката",
+    "previewText": "Молим Ви да донесете здравната си карта, за да обработим поръчката Ви.",
+    "title": "Необходима е здравна карта",
+    "greeting": "Уважаеми/а {{patientName}},",
+    "message1": "За да обработим Вашата поръчка, трябва да бъде въведена електронната Ви здравна карта за текущото тримесечие.",
+    "message2": "Моля, посетете кратко нашата практика, за да прочетем картата. Едва след това можем да завършим поръчката Ви.",
+    "message3": "Щом картата е налична, ще продължим обработката незабавно. Благодарим за разбирането.",
+    "highlight": "Без въведена здравна карта нямаме право да обработим поръчката Ви.",
+    "contactTitle": "При въпроси сме на разположение:",
+    "phone": "Телефон:",
+    "email": "Имейл:",
+    "practiceName": "Praxis Dr. Kerim",
+    "address": "Jacques-Offenbach-Straße 12, 63069 Offenbach am Main",
+    "regards": "С уважение",
+    "team": "Екипът на Praxis Dr. Kerim",
+    "footer": "© {{year}} Praxis Dr. Kerim. Всички права запазени."
+  },
+  "doctorNames": {
+    "general": "ГЕНЕРАЛЕН ЧАС ПРИ ЛЕКАР"
   }
 }
 
